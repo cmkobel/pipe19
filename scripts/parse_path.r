@@ -11,17 +11,19 @@ write(paste(args), stderr())
 write("", stderr())
 
 batch = args[1]
-year = args[2]
+plate = args[2]
 path = args[3]
-convertRIV = args[4]
+year = args[4]
+convertRIV = args[5]
 
 # Example call:
 # RScript path/to/parse_path.r 210108 20 ~/GenomeDK/ClinicalMicrobio/faststorage/BACKUP/N331/210108_NS500158_0512_AHGLJ7AFX2/fastq TRUE
 
 # For development, the arguments can also be given manually:
 #batch = 210108
-#year = 20
+#plate = 3471
 #path = "~/GenomeDK/ClinicalMicrobio/faststorage/BACKUP/N331/210108_NS500158_0512_AHGLJ7AFX2/fastq"
+#year = 20
 #convertRIV = "TRUE" # You can't pass a type boolean over cli. Only text
 
 
@@ -75,13 +77,14 @@ pastecollapsed = function(x) {
 # Collect the files for each 
 input_grouped = input %>% 
     arrange(lane) %>% 
-    pivot_wider(id_cols = c(sample_name, source_project, extension),
+    pivot_wider(id_cols = c(sample_name, source_project, extension, moma_serial),
                 names_from = direction,
                 values_from = basename,
                 values_fn = pastecollapsed) %>% 
     mutate(path = path,
-           batch = batch) %>% 
-    select(batch, sample_name, source_project, extension, path, R1, R2) # Reorder the columns
+           batch = batch,
+           plate = plate) %>% 
+    select(batch, plate, moma_serial, sample_name, extension, source_project, path, R1, R2) # Reorder the columns
 
 
 # Write the input_grouped table to disk so the python-gwf-workflow can be started.
