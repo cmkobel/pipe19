@@ -100,8 +100,8 @@ for index, row in df.iterrows():
         gwf.target(f"_0cat_{full_name}".replace(".", "_"),
             inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
                      [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
-            outputs = [f"{output_base}/{full_name}/catted/{full_name}_R1.{batch_row['extension']}",
-                       f"{output_base}/{full_name}/catted/{full_name}_R2.{batch_row['extension']}"]) << \
+            outputs = [f"{output_base}/{full_name}/catted/{full_name}_R1{batch_row['extension']}",
+                       f"{output_base}/{full_name}/catted/{full_name}_R2{batch_row['extension']}"]) << \
             f"""
 
             mkdir -p {output_base}/{full_name}/catted/
