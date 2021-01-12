@@ -36,6 +36,7 @@ print("""
 
 input_list_file = "input_list.tab"
 batches_done_file = "other/batches_done.tab"
+input_base = "input"
 
 
 df = pd.read_table(input_list_file, sep="\t", names = ["batch", "path", "method"])
@@ -63,10 +64,10 @@ for index, row in df.iterrows():
     print(row['batch'], row['path'])
 
     try:
-        command = f"singularity run docker://rocker/tidyverse Rscript scripts/parse_path.r {row['batch']} {mads_year} {row['path']} TRUE >> out.txt"
+        command = f"singularity run docker://rocker/tidyverse Rscript scripts/parse_path.r {row['batch']} {mads_year} {row['path']} TRUE > {input_base}/{row['batch']}.tab" 
         subprocess.run(command, shell = True, check = True)
     except subprocess.CalledProcessError as e:
         print(f"\nAn error occured while initializing {row['batch']}:\n", e)
         sys.exit()
 
-    # K
+
