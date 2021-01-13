@@ -40,9 +40,16 @@ input_base = "input"
 output_base = "output"
 
 
+config = {'reference': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.reference.fasta",
+          'bed_file': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed"}
+
+
 df = pd.read_table(input_list_file, sep="\t", names = ["batch", "plate", "path", "method"])
 batches_done = pd.read_table(batches_done_file, sep = "\t", names = ["batch"])
 
+
+def conda(env):
+    return f"source ~/miniconda3/etc/profile.d/conda.sh; conda activate {env}"
 
 
 print("input list file:")
@@ -97,34 +104,76 @@ for index, row in df.iterrows():
         print(full_name)
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
-        gwf.target(f"_0cat_{full_name}".replace(".", "_"),
+        target_0cat = gwf.target(f"_0cat_{full_name}".replace(".", "_"),
             inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
                      [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
-            outputs = [f"{output_base}/{full_name}/catted/{full_name}_R1{batch_row['extension']}",
-                       f"{output_base}/{full_name}/catted/{full_name}_R2{batch_row['extension']}"]) << \
-            f"""
+            outputs = [f"{output_base}/{full_name}/trimmed/{full_name}_val_1.fq.gz",
+                       f"{output_base}/{full_name}/trimmed/{full_name}_val_2.fq.gz"],
+            cores = 4) << \
+                f"""
 
-            mkdir -p {output_base}/{full_name}/catted/
-            cat {" ".join([batch_row['path'] + i for i in batch_row['R1'].split(" ")])} > {output_base}/{full_name}/catted/{full_name}_R1{batch_row['extension']}
-            cat {" ".join([batch_row['path'] + i for i in batch_row['R2'].split(" ")])} > {output_base}/{full_name}/catted/{full_name}_R2{batch_row['extension']}
-            
+                {conda("ivar-inpipe")}
+                
+                mkdir -p {output_base}/{full_name}/trimmed
+                
+
+                # Cat
+
+                cat {" ".join([batch_row['path'] + i for i in batch_row['R1'].split(" ")])} > {output_base}/{full_name}/trimmed/{full_name}_R1{batch_row['extension']}
+                cat {" ".join([batch_row['path'] + i for i in batch_row['R2'].split(" ")])} > {output_base}/{full_name}/trimmed/{full_name}_R2{batch_row['extension']}
+
+
+                # Trim
+
+                trim_galore --paired --fastqc --cores 4 --gzip -o {output_base}/{full_name}/trimmed --basename {full_name} {output_base}/{full_name}/trimmed/{full_name}_R1{batch_row['extension']} {output_base}/{full_name}/trimmed/{full_name}_R2{batch_row['extension']}
+
+
+
+
+        
 
             """
 
-        # Trim 
+       
+    
+                # Map 
+        target_1map = gwf.target(f"_1map_{full_name}".replace(".", "_"),
+            inputs = target_0cat.outputs,
+            outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.bam",
+                       f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
+            cores = 4) << \
+                f"""
+
+                {conda("ivar-inpipe")} # TODO: remove bwa from pipe19_a
+
+                mkdir -p {output_base}/{full_name}/aligned
 
 
-        # Map 
+                # Map to reference
+                echo "mapping ..."
+                bwa mem -t 4 {config['reference']} {output_base}/{full_name}/trimmed/{full_name}_val_1.fq.gz {output_base}/{full_name}/trimmed/{full_name}_val_2.fq.gz \
+                | samtools view -F 4 -Sb -@ 4 \
+                | samtools sort -@ 4 -T {full_name}.align -o {output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam
 
 
-        # Call consensus
+                # Rename region ids
+                echo "renaming ..."
+                samtools addreplacerg -@ 4 -r "ID:{full_name}" -o {output_base}/{full_name}/aligned/{full_name}.sorted.bam {output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam
+                rm {output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam
 
 
-        # Nextclade
+                # Trim alignment
+                echo "trimming ..."
+                ivar trim -e -i {output_base}/{full_name}/aligned/{full_name}.sorted.bam -b {config['bed_file']} -p {output_base}/{full_name}/aligned/{full_name}.trimmed.bam -q 30
+                samtools sort -T {full_name}.trim -o {output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam {output_base}/{full_name}/aligned/{full_name}.trimmed.bam
+                rm {output_base}/{full_name}/aligned/{full_name}.trimmed.bam
 
 
-        # Pangolin
 
 
 
+                """
+
+
+        break
 
