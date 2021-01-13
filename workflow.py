@@ -140,13 +140,9 @@ for index, row in df.iterrows():
             # rm $tmp_reverse
 
 
-
-        
-
             """
 
        
-    
         # Map 
         t_map = gwf.target(f"_map__{full_name_clean}",
             inputs = t_cat.outputs['files'],
@@ -164,7 +160,6 @@ for index, row in df.iterrows():
             mapped="{output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam"
             renamed="{output_base}/{full_name}/aligned/{full_name}.sorted.bam"
             tmptrimmed="{output_base}/{full_name}/aligned/{full_name}.trimmed.bam"
-
 
 
             # Map to reference
@@ -189,8 +184,6 @@ for index, row in df.iterrows():
             samtools sort -T {full_name}.trim -o {t_map.outputs['bam']} $tmptrimmed
             rm $tmptrimmed
 
-
-
             """
 
 
@@ -207,8 +200,8 @@ for index, row in df.iterrows():
 
                 samtools mpileup -A -Q 0 -d 0 {output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam | ivar consensus -q 30 -p {output_base}/{full_name}/consensus/{full_name}.fa -m 10 -n N
 
-
                 """
+
 
         # Pangolin 
         t_pangolin = gwf.target(f"_pang_{full_name_clean}",
@@ -242,11 +235,10 @@ for index, row in df.iterrows():
 
             rm {t_pangolin.outputs[0]}/lineage_report.csv
 
-
             """
 
 
-        # nextclade
+        # Nextclade
         t_nextclade = gwf.target(f"_next_{full_name_clean}",
             inputs = t_consensus.outputs,
             outputs = {'dir': f"{output_base}/{full_name}/nextclade",
@@ -255,7 +247,6 @@ for index, row in df.iterrows():
             f"""
 
             mkdir -p {t_nextclade.outputs['dir']}
-
 
             singularity run \
                 docker://neherlab/nextclade \
@@ -278,20 +269,15 @@ for index, row in df.iterrows():
             >> {t_nextclade.outputs['tab']}
 
 
-
-
             rm {t_nextclade.outputs['tab']}.tmp
-
-                      
-
-
-
-
 
             """
 
 
-        break
+        # Rscript that collects all the metadata together.
+        #t_Rscript = gwf.target
+
+        #break
 
         
 
