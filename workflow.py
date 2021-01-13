@@ -100,33 +100,34 @@ for index, row in df.iterrows():
 
         sample_name = f"{batch_row['sample_name']}"
         full_name = f"{batch_long}.{batch_row['moma_serial']}_{batch_row['sample_name']}"
+        full_name_clean = full_name.replace(".", "_")
 
         print(full_name)
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
-        target_0cat = gwf.target(f"_0cat_{full_name}".replace(".", "_"),
+        target_0cat = gwf.target(f"_0cat_{full_name_clean}",
             inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
                      [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
-            outputs = [f"{output_base}/{full_name}/trimmed/{full_name}_val_1.fq.gz",
-                       f"{output_base}/{full_name}/trimmed/{full_name}_val_2.fq.gz"],
+            outputs = [f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz",
+                       f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_2.fq.gz"],
             cores = 4) << \
                 f"""
 
                 {conda("ivar-inpipe")}
                 
-                mkdir -p {output_base}/{full_name}/trimmed
+                mkdir -p {output_base}/{full_name}/trimmed_reads
                 
 
-                # Cat
+                # Cat the reads together
+                cat {" ".join([batch_row['path'] + i for i in batch_row['R1'].split(" ")])} > {output_base}/{full_name}/trimmed_reads/{full_name}_R1{batch_row['extension']}
+                cat {" ".join([batch_row['path'] + i for i in batch_row['R2'].split(" ")])} > {output_base}/{full_name}/trimmed_reads/{full_name}_R2{batch_row['extension']}
 
-                cat {" ".join([batch_row['path'] + i for i in batch_row['R1'].split(" ")])} > {output_base}/{full_name}/trimmed/{full_name}_R1{batch_row['extension']}
-                cat {" ".join([batch_row['path'] + i for i in batch_row['R2'].split(" ")])} > {output_base}/{full_name}/trimmed/{full_name}_R2{batch_row['extension']}
+
+                # Trim the reads
+                trim_galore --paired --fastqc --cores 4 --gzip -o {output_base}/{full_name}/trimmed_reads --basename {full_name} {output_base}/{full_name}/trimmed_reads/{full_name}_R1{batch_row['extension']} {output_base}/{full_name}/trimmed_reads/{full_name}_R2{batch_row['extension']}
 
 
-                # Trim
-
-                trim_galore --paired --fastqc --cores 4 --gzip -o {output_base}/{full_name}/trimmed --basename {full_name} {output_base}/{full_name}/trimmed/{full_name}_R1{batch_row['extension']} {output_base}/{full_name}/trimmed/{full_name}_R2{batch_row['extension']}
-
+                # TODO: Consider removing the catted reads.
 
 
 
@@ -136,11 +137,10 @@ for index, row in df.iterrows():
 
        
     
-                # Map 
-        target_1map = gwf.target(f"_1map_{full_name}".replace(".", "_"),
+        # Map 
+        target_1map = gwf.target(f"_1map_{full_name_clean}",
             inputs = target_0cat.outputs,
-            outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.bam",
-                       f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
+            outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
             cores = 4) << \
                 f"""
 
@@ -151,7 +151,7 @@ for index, row in df.iterrows():
 
                 # Map to reference
                 echo "mapping ..."
-                bwa mem -t 4 {config['reference']} {output_base}/{full_name}/trimmed/{full_name}_val_1.fq.gz {output_base}/{full_name}/trimmed/{full_name}_val_2.fq.gz \
+                bwa mem -t 4 {config['reference']} {output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz {output_base}/{full_name}/trimmed_reads/{full_name}_val_2.fq.gz \
                 | samtools view -F 4 -Sb -@ 4 \
                 | samtools sort -@ 4 -T {full_name}.align -o {output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam
 
@@ -170,10 +170,23 @@ for index, row in df.iterrows():
 
 
 
+                """
+
+
+        # Consensus
+        target_2con = gwf.target(f"_2con_{full_name_clean}",
+            inputs = target_1map.outputs,
+            outputs = "") << \
+                f"""
+
+                {conda("ivar-inpipe")}
+
+                mkdir -p {output_base}/{full_name}/consensus
+
+                samtools mpileup -A -Q 0 -d 0 {output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam | ivar consensus -q 30 -p {output_base}/{full_name}/consensus/{full_name}.fa -m 10 -n N
 
 
                 """
-
 
         break
 
