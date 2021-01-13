@@ -192,7 +192,7 @@ for index, row in df.iterrows():
         t_pangolin = gwf.target(f"_pang_{full_name_clean}",
             inputs = target_con.outputs,
             outputs = [f"{output_base}/{full_name}/pangolin",
-                       f"{output_base}/{full_name}/pangolin/{full_name}.csv"])
+                       f"{output_base}/{full_name}/pangolin/{full_name}_pangolin.csv"])
 
         t_pangolin << \
                 f"""
