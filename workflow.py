@@ -93,6 +93,7 @@ for index, row in df.iterrows():
 
     print(batch_df)
     print("//")
+    print()
 
     # TODO: Check that the batch given in input list is similar to the batch specified in the batch_input_file
 
@@ -106,8 +107,8 @@ for index, row in df.iterrows():
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
         t_cat = gwf.target(f"_cat__{full_name_clean}",
-            inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
-                     [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
+            inputs = {'forward': [batch_row['path'] + i for i in batch_row['R1'].split(" ")],
+                      'reverse': [batch_row['path'] + i for i in batch_row['R2'].split(" ")]}, 
             outputs = {'dir': f"{output_base}/{full_name}/trimmed_reads/",
                        'files': [f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz",
                                  f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_2.fq.gz"]},
@@ -117,22 +118,26 @@ for index, row in df.iterrows():
 
             {conda("ivar-inpipe")}
             
+
             mkdir -p {t_cat.outputs['dir']}
             
-            tmp_forward={output_base}/{full_name}/trimmed_reads/{full_name}_R1{batch_row['extension']}
-            tmp_reverse={output_base}/{full_name}/trimmed_reads/{full_name}_R2{batch_row['extension']}
+
+            tmp_forward="{output_base}/{full_name}/trimmed_reads/{full_name}_R1{batch_row['extension']}"
+            tmp_reverse="{output_base}/{full_name}/trimmed_reads/{full_name}_R2{batch_row['extension']}"
 
 
             # Cat the reads together
-            cat {" ".join(t_cat.inputs[0])} > $tmp_forward
-            cat {" ".join(t_cat.inputs[1])} > $tmp_reverse
+            cat {" ".join(t_cat.inputs['forward'])} > $tmp_forward
+            cat {" ".join(t_cat.inputs['reverse'])} > $tmp_reverse
 
 
             # Trim the reads
             trim_galore --paired --fastqc --cores 4 --gzip -o {t_cat.outputs['dir']} --basename {full_name} $tmp_forward $tmp_reverse
 
 
-            # TODO: Consider removing the catted reads (tmp).
+            # TODO: Consider removing the catted reads (tmp_).
+            # rm $tmp_forward
+            # rm $tmp_reverse
 
 
 
@@ -145,42 +150,54 @@ for index, row in df.iterrows():
         # Map 
         t_map = gwf.target(f"_map__{full_name_clean}",
             inputs = t_cat.outputs['files'],
-            outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
-            cores = 4) << \
-                f"""
+            outputs = {'dir': f"{output_base}/{full_name}/aligned",
+                       'bam': f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"},
+            cores = 4)
+        t_map << \
+            f"""
 
-                {conda("ivar-inpipe")} # TODO: remove bwa from pipe19_a
+            {conda("ivar-inpipe")} # TODO: remove bwa from pipe19_a
 
-                mkdir -p {output_base}/{full_name}/aligned
-
-
-                # Map to reference
-                echo "mapping ..."
-                bwa mem -t 4 {config['reference']} {output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz {output_base}/{full_name}/trimmed_reads/{full_name}_val_2.fq.gz \
-                | samtools view -F 4 -Sb -@ 4 \
-                | samtools sort -@ 4 -T {full_name}.align -o {output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam
+            mkdir -p {t_map.outputs['dir']}
 
 
-                # Rename region ids
-                echo "renaming ..."
-                samtools addreplacerg -@ 4 -r "ID:{full_name}" -o {output_base}/{full_name}/aligned/{full_name}.sorted.bam {output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam
-                rm {output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam
-
-
-                # Trim alignment
-                echo "trimming ..."
-                ivar trim -e -i {output_base}/{full_name}/aligned/{full_name}.sorted.bam -b {config['bed_file']} -p {output_base}/{full_name}/aligned/{full_name}.trimmed.bam -q 30
-                samtools sort -T {full_name}.trim -o {output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam {output_base}/{full_name}/aligned/{full_name}.trimmed.bam
-                rm {output_base}/{full_name}/aligned/{full_name}.trimmed.bam
+            mapped="{output_base}/{full_name}/aligned/{full_name}.sorted.tmp.bam"
+            renamed="{output_base}/{full_name}/aligned/{full_name}.sorted.bam"
+            tmptrimmed="{output_base}/{full_name}/aligned/{full_name}.trimmed.bam"
 
 
 
-                """
+            # Map to reference
+            echo "mapping ..."
+            bwa mem -t 4 {config['reference']} {t_map.inputs[0]} {t_map.inputs[1]}  \
+            | samtools view -F 4 -Sb -@ 4 \
+            | samtools sort -@ 4 -T {full_name}.align -o $mapped
+
+
+            # Rename region ids
+            echo "renaming ..."
+            samtools addreplacerg -@ 4 -r "ID:{full_name}" -o $renamed $mapped
+            rm $mapped
+
+
+            # Trim alignment
+            echo "trimming ..."
+            ivar trim -e -i $renamed -b {config['bed_file']} -p $tmptrimmed -q 30
+            rm $renamed 
+
+            # Finally sort
+            samtools sort -T {full_name}.trim -o {t_map.outputs['bam']} $tmptrimmed
+            rm $tmptrimmed
+
+
+
+            """
 
 
         # Consensus
+        # TODO: Parametrize
         t_consensus = gwf.target(f"_cons_{full_name_clean}",
-            inputs = t_map.outputs,
+            inputs = t_map.outputs['bam'],
             outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa") << \
                 f"""
 
@@ -229,11 +246,54 @@ for index, row in df.iterrows():
             """
 
 
+        # nextclade
+        t_nextclade = gwf.target(f"_next_{full_name_clean}",
+            inputs = t_consensus.outputs,
+            outputs = {'dir': f"{output_base}/{full_name}/nextclade",
+                       'tab': f"{output_base}/{full_name}/nextclade/{full_name}_nextclade.tab"})
+        t_nextclade << \
+            f"""
+
+            mkdir -p {t_nextclade.outputs['dir']}
+
+
+            singularity run \
+                docker://neherlab/nextclade \
+                    nextclade.js \
+                        --input-fasta {t_nextclade.inputs} \
+                        --output-tsv {t_nextclade.outputs['tab']}.tmp
+
+            ./scripts/dos2unix {t_nextclade.outputs['tab']}.tmp
+
+            # Prefix header row with #, and end with header for full_name
+            cat {t_nextclade.outputs['tab']}.tmp \
+            | head -n 1 \
+            | awk '{{ print "#" $0 "\\tfull_name" }}' \
+            > {t_nextclade.outputs['tab']}
+
+            # End result row with full_name
+            cat {t_nextclade.outputs['tab']}.tmp \
+            | tail -n 1 \
+            | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' \
+            >> {t_nextclade.outputs['tab']}
+
+
+
+
+            rm {t_nextclade.outputs['tab']}.tmp
+
+                      
+
+
+
+
+
+            """
+
 
         break
 
         
-
 
 
 
