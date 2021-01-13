@@ -105,29 +105,34 @@ for index, row in df.iterrows():
         print(full_name)
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
-        t_catt = gwf.target(f"_cat__{full_name_clean}",
+        t_cat = gwf.target(f"_cat__{full_name_clean}",
             inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
                      [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
-            outputs = [f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz",
-                       f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_2.fq.gz"],
-            cores = 4) << \
-                f"""
+            outputs = {'dir': f"{output_base}/{full_name}/trimmed_reads/",
+                       'files': [f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz",
+                                 f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_2.fq.gz"]},
+            cores = 4)
+        t_cat << \
+            f"""
 
-                {conda("ivar-inpipe")}
-                
-                mkdir -p {output_base}/{full_name}/trimmed_reads
-                
-
-                # Cat the reads together
-                cat {" ".join([batch_row['path'] + i for i in batch_row['R1'].split(" ")])} > {output_base}/{full_name}/trimmed_reads/{full_name}_R1{batch_row['extension']}
-                cat {" ".join([batch_row['path'] + i for i in batch_row['R2'].split(" ")])} > {output_base}/{full_name}/trimmed_reads/{full_name}_R2{batch_row['extension']}
-
-
-                # Trim the reads
-                trim_galore --paired --fastqc --cores 4 --gzip -o {output_base}/{full_name}/trimmed_reads --basename {full_name} {output_base}/{full_name}/trimmed_reads/{full_name}_R1{batch_row['extension']} {output_base}/{full_name}/trimmed_reads/{full_name}_R2{batch_row['extension']}
+            {conda("ivar-inpipe")}
+            
+            mkdir -p {t_cat.outputs['dir']}
+            
+            tmp_forward={output_base}/{full_name}/trimmed_reads/{full_name}_R1{batch_row['extension']}
+            tmp_reverse={output_base}/{full_name}/trimmed_reads/{full_name}_R2{batch_row['extension']}
 
 
-                # TODO: Consider removing the catted reads.
+            # Cat the reads together
+            cat {" ".join(t_cat.inputs[0])} > $tmp_forward
+            cat {" ".join(t_cat.inputs[1])} > $tmp_reverse
+
+
+            # Trim the reads
+            trim_galore --paired --fastqc --cores 4 --gzip -o {t_cat.outputs['dir']} --basename {full_name} $tmp_forward $tmp_reverse
+
+
+            # TODO: Consider removing the catted reads (tmp).
 
 
 
@@ -139,7 +144,7 @@ for index, row in df.iterrows():
     
         # Map 
         t_map = gwf.target(f"_map__{full_name_clean}",
-            inputs = t_catt.outputs,
+            inputs = t_cat.outputs['files'],
             outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
             cores = 4) << \
                 f"""
@@ -194,34 +199,34 @@ for index, row in df.iterrows():
             outputs = [f"{output_base}/{full_name}/pangolin",
                        f"{output_base}/{full_name}/pangolin/{full_name}_pangolin.csv"])
         t_pangolin << \
-                f"""
+            f"""
 
-                mkdir -p {t_pangolin.outputs[0]}
-
-
-                singularity run docker://staphb/pangolin \
-                    pangolin {t_pangolin.inputs} \
-                        --threads 1 \
-                        --outdir {t_pangolin.outputs[0]}
+            mkdir -p {t_pangolin.outputs[0]}
 
 
-                # Prefix header row with #, and end with header for full_name
-                cat {t_pangolin.outputs[0]}/lineage_report.csv \
-                | head -n 1 \
-                | awk '{{ print "#" $0 ",full_name" }}' \
-                > {t_pangolin.outputs[1]}
-
-                # End result row with full_name
-                cat {t_pangolin.outputs[0]}/lineage_report.csv \
-                | tail -n 1 \
-                | awk -v sam={full_name} '{{ print $0 "," sam }}' \
-                >> {t_pangolin.outputs[1]}
+            singularity run docker://staphb/pangolin \
+                pangolin {t_pangolin.inputs} \
+                    --threads 1 \
+                    --outdir {t_pangolin.outputs[0]}
 
 
-                rm {t_pangolin.outputs[0]}/lineage_report.csv
+            # Prefix header row with #, and end with header for full_name
+            cat {t_pangolin.outputs[0]}/lineage_report.csv \
+            | head -n 1 \
+            | awk '{{ print "#" $0 ",full_name" }}' \
+            > {t_pangolin.outputs[1]}
+
+            # End result row with full_name
+            cat {t_pangolin.outputs[0]}/lineage_report.csv \
+            | tail -n 1 \
+            | awk -v sam={full_name} '{{ print $0 "," sam }}' \
+            >> {t_pangolin.outputs[1]}
 
 
-                """
+            rm {t_pangolin.outputs[0]}/lineage_report.csv
+
+
+            """
 
 
 
