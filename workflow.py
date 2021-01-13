@@ -105,7 +105,7 @@ for index, row in df.iterrows():
         print(full_name)
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
-        target_cat = gwf.target(f"_catt_{full_name_clean}",
+        t_catt = gwf.target(f"_cat__{full_name_clean}",
             inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
                      [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
             outputs = [f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz",
@@ -138,8 +138,8 @@ for index, row in df.iterrows():
        
     
         # Map 
-        target_map = gwf.target(f"_mapp_{full_name_clean}",
-            inputs = target_cat.outputs,
+        t_map = gwf.target(f"_map__{full_name_clean}",
+            inputs = t_catt.outputs,
             outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
             cores = 4) << \
                 f"""
@@ -174,8 +174,8 @@ for index, row in df.iterrows():
 
 
         # Consensus
-        target_con = gwf.target(f"_cons_{full_name_clean}",
-            inputs = target_map.outputs,
+        t_consensus = gwf.target(f"_cons_{full_name_clean}",
+            inputs = t_map.outputs,
             outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa") << \
                 f"""
 
@@ -190,10 +190,9 @@ for index, row in df.iterrows():
 
         # Pangolin 
         t_pangolin = gwf.target(f"_pang_{full_name_clean}",
-            inputs = target_con.outputs,
+            inputs = t_consensus.outputs,
             outputs = [f"{output_base}/{full_name}/pangolin",
                        f"{output_base}/{full_name}/pangolin/{full_name}_pangolin.csv"])
-
         t_pangolin << \
                 f"""
 
@@ -206,11 +205,13 @@ for index, row in df.iterrows():
                         --outdir {t_pangolin.outputs[0]}
 
 
+                # Prefix header row with #, and end with header for full_name
                 cat {t_pangolin.outputs[0]}/lineage_report.csv \
                 | head -n 1 \
                 | awk '{{ print "#" $0 ",full_name" }}' \
                 > {t_pangolin.outputs[1]}
 
+                # End result row with full_name
                 cat {t_pangolin.outputs[0]}/lineage_report.csv \
                 | tail -n 1 \
                 | awk -v sam={full_name} '{{ print $0 "," sam }}' \
@@ -221,6 +222,8 @@ for index, row in df.iterrows():
 
 
                 """
+
+
 
         break
 
