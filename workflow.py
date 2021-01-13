@@ -105,7 +105,7 @@ for index, row in df.iterrows():
         print(full_name)
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
-        target_cat = gwf.target(f"_cat_{full_name_clean}",
+        target_cat = gwf.target(f"_catt_{full_name_clean}",
             inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
                      [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
             outputs = [f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz",
@@ -138,7 +138,7 @@ for index, row in df.iterrows():
        
     
         # Map 
-        target_map = gwf.target(f"_map_{full_name_clean}",
+        target_map = gwf.target(f"_mapp_{full_name_clean}",
             inputs = target_cat.outputs,
             outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
             cores = 4) << \
@@ -174,7 +174,7 @@ for index, row in df.iterrows():
 
 
         # Consensus
-        target_con = gwf.target(f"_con_{full_name_clean}",
+        target_con = gwf.target(f"_cons_{full_name_clean}",
             inputs = target_map.outputs,
             outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa") << \
                 f"""
@@ -189,24 +189,30 @@ for index, row in df.iterrows():
                 """
 
         # Pangolin 
-        target_pan = gwf.target(f"_pan_{full_name_clean}",
+        t_pangolin = gwf.target(f"_pang_{full_name_clean}",
             inputs = target_con.outputs,
-            outputs = f"{output_base}/{full_name}/pangolin/{full_name}.csv") << \
+            outputs = [f"{output_base}/{full_name}/pangolin",
+                       f"{output_base}/{full_name}/pangolin/{full_name}.csv"])
+
+        t_pangolin << \
                 f"""
 
-                mkdir -p {output_base}/{full_name}/pangolin
+                mkdir -p {t_pangolin.outputs[0]}
 
                 singularity run docker://staphb/pangolin \
-                    pangolin "{output_base}/{full_name}/consensus/{full_name}.fa" \
+                    pangolin {t_pangolin.inputs} \
                         --threads 1 \
-                        --outdir {output_base}/{full_name}/pangolin/
+                        --outdir {t_pangolin.outputs[0]}
 
-                cat {output_base}/{full_name}/pangolin/lineage_report.csv \
-                | grep -vE "^taxon,lineage,probability,pangoLEARN_version,status,note" \
-                | awk -v sam={full_name} '{{ print sam "," $0 }}' \
-                > {output_base}/{full_name}/pangolin/{full_name}.csv
+                # Prefix the first line with a #
+                echo -n "#" > {t_pangolin.outputs[0]}/{full_name}.csv
+                
+                # Suffix each line with the sample name
+                cat {t_pangolin.outputs[0]}/lineage_report.csv \
+                | awk -v sam={full_name} '{{ print $0 "," sam }}' \
+                >> {t_pangolin.outputs[1]}
 
-                rm {output_base}/{full_name}/pangolin/lineage_report.csv
+                rm {t_pangolin.outputs[0]}/lineage_report.csv
 
 
                 """
