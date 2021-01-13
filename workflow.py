@@ -199,18 +199,23 @@ for index, row in df.iterrows():
 
                 mkdir -p {t_pangolin.outputs[0]}
 
+
                 singularity run docker://staphb/pangolin \
                     pangolin {t_pangolin.inputs} \
                         --threads 1 \
                         --outdir {t_pangolin.outputs[0]}
 
-                # Prefix the first line with a #
-                echo -n "#" > {t_pangolin.outputs[0]}/{full_name}.csv
-                
-                # Suffix each line with the sample name
+
                 cat {t_pangolin.outputs[0]}/lineage_report.csv \
+                | head -n 1 \
+                | awk '{{ print "#" $0 ",full_name" }}' \
+                > {t_pangolin.outputs[1]}
+
+                cat {t_pangolin.outputs[0]}/lineage_report.csv \
+                | tail -n 1 \
                 | awk -v sam={full_name} '{{ print $0 "," sam }}' \
                 >> {t_pangolin.outputs[1]}
+
 
                 rm {t_pangolin.outputs[0]}/lineage_report.csv
 
