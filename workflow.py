@@ -105,7 +105,7 @@ for index, row in df.iterrows():
         print(full_name)
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
-        target_0cat = gwf.target(f"_0cat_{full_name_clean}",
+        target_cat = gwf.target(f"_cat_{full_name_clean}",
             inputs = [batch_row['path'] + i for i in batch_row['R1'].split(" ")] +
                      [batch_row['path'] + i for i in batch_row['R2'].split(" ")], 
             outputs = [f"{output_base}/{full_name}/trimmed_reads/{full_name}_val_1.fq.gz",
@@ -138,8 +138,8 @@ for index, row in df.iterrows():
        
     
         # Map 
-        target_1map = gwf.target(f"_1map_{full_name_clean}",
-            inputs = target_0cat.outputs,
+        target_map = gwf.target(f"_map_{full_name_clean}",
+            inputs = target_cat.outputs,
             outputs = [f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"],
             cores = 4) << \
                 f"""
@@ -174,9 +174,9 @@ for index, row in df.iterrows():
 
 
         # Consensus
-        target_2con = gwf.target(f"_2con_{full_name_clean}",
-            inputs = target_1map.outputs,
-            outputs = "") << \
+        target_con = gwf.target(f"_con_{full_name_clean}",
+            inputs = target_map.outputs,
+            outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa") << \
                 f"""
 
                 {conda("ivar-inpipe")}
@@ -188,5 +188,34 @@ for index, row in df.iterrows():
 
                 """
 
+        # Pangolin 
+        target_pan = gwf.target(f"_pan_{full_name_clean}",
+            inputs = target_con.outputs,
+            outputs = f"{output_base}/{full_name}/pangolin/{full_name}.csv") << \
+                f"""
+
+                mkdir -p {output_base}/{full_name}/pangolin
+
+                singularity run docker://staphb/pangolin \
+                    pangolin "{output_base}/{full_name}/consensus/{full_name}.fa" \
+                        --threads 1 \
+                        --outdir {output_base}/{full_name}/pangolin/
+
+                cat {output_base}/{full_name}/pangolin/lineage_report.csv \
+                | grep -vE "^taxon,lineage,probability,pangoLEARN_version,status,note" \
+                | awk -v sam={full_name} '{{ print sam "," $0 }}' \
+                > {output_base}/{full_name}/pangolin/{full_name}.csv
+
+                rm {output_base}/{full_name}/pangolin/lineage_report.csv
+
+
+                """
+
         break
+
+        
+
+
+
+
 
