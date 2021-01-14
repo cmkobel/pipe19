@@ -13,7 +13,8 @@ import subprocess, sys
 gwf = Workflow(defaults={
     "mail_user": "kobel@pm.me",
     "mail_type": "FAIL",
-    "account": "clinicalmicrobio"
+    "account": "clinicalmicrobio",
+    "memory": '2g'
 })
 
 
@@ -41,15 +42,17 @@ output_base = "output"
 
 
 config = {'reference': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.reference.fasta",
-          'bed_file': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed"}
+          'bed_file': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed",
+          'singularity_images': "~/faststorage/singularity_images"}
 
 
-df = pd.read_table(input_list_file, sep="\t", names = ["batch", "plate", "path", "method"])
+df = pd.read_table(input_list_file, sep="\t", names = ["batch", "plate", "path", "method"], comment = "#")
 batches_done = pd.read_table(batches_done_file, sep = "\t", names = ["batch"])
 
 
 def conda(env):
     return f"source ~/miniconda3/etc/profile.d/conda.sh; conda activate {env}"
+
 
 
 print("input list file:")
@@ -60,7 +63,7 @@ print()
 
 # Iterate over each line in input_list_file
 for index, row in df.iterrows():
-
+    print()
     # if row["bath"] in batches_done:
         #continue
 
@@ -81,7 +84,7 @@ for index, row in df.iterrows():
     else:
         print(f" creating the file {batch_input_file}")
         try:
-            command = f"singularity run docker://rocker/tidyverse Rscript scripts/parse_path.r {row['batch']} {row['plate']} {row['path']} {mads_year} TRUE > {batch_input_file}" 
+            command = f"singularity run docker://rocker/tidyverse Rscript scripts/parse_path.r {row['batch']} {row['plate']} {row['path']} {mads_year} TRUE > other/input_tmp.tab && mv other/input_tmp.tab {batch_input_file}" # TODO: delete the batch_input_file if it is empty 
             subprocess.run(command, shell = True, check = True)
         except subprocess.CalledProcessError as e:
             print(f"\nAn error occured while initializing {row['batch']}:\n", e)
@@ -103,7 +106,7 @@ for index, row in df.iterrows():
         full_name = f"{batch_long}.{batch_row['moma_serial']}_{batch_row['sample_name']}"
         full_name_clean = full_name.replace(".", "_")
 
-        print(full_name)
+        print(full_name, end = " ")
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
         t_cat = gwf.target(f"_cat__{full_name_clean}",
@@ -148,7 +151,8 @@ for index, row in df.iterrows():
             inputs = t_cat.outputs['files'],
             outputs = {'dir': f"{output_base}/{full_name}/aligned",
                        'bam': f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"},
-            cores = 4)
+            cores = 4,
+            memory = '4gb')
         t_map << \
             f"""
 
@@ -191,7 +195,8 @@ for index, row in df.iterrows():
         # TODO: Parametrize
         t_consensus = gwf.target(f"_cons_{full_name_clean}",
             inputs = t_map.outputs['bam'],
-            outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa") << \
+            outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa",
+            memory = '4g') << \
                 f"""
 
                 {conda("ivar-inpipe")}
@@ -214,7 +219,7 @@ for index, row in df.iterrows():
             mkdir -p {t_pangolin.outputs[0]}
 
 
-            singularity run docker://staphb/pangolin \
+            singularity run {config['singularity_images']}/pangolin_latest.sif \
                 pangolin {t_pangolin.inputs} \
                     --threads 1 \
                     --outdir {t_pangolin.outputs[0]}
@@ -242,14 +247,14 @@ for index, row in df.iterrows():
         t_nextclade = gwf.target(f"_next_{full_name_clean}",
             inputs = t_consensus.outputs,
             outputs = {'dir': f"{output_base}/{full_name}/nextclade",
-                       'tab': f"{output_base}/{full_name}/nextclade/{full_name}_nextclade.tab"})
+                       'tab': f"{output_base}/{full_name}/nextclade/{full_name}_nextclade.tab"},
+            memory = '4g') 
         t_nextclade << \
             f"""
 
             mkdir -p {t_nextclade.outputs['dir']}
 
-            singularity run \
-                docker://neherlab/nextclade \
+            singularity run {config['singularity_images']}/nextclade_latest.sif \
                     nextclade.js \
                         --input-fasta {t_nextclade.inputs} \
                         --output-tsv {t_nextclade.outputs['tab']}.tmp
