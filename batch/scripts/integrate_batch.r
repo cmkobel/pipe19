@@ -18,18 +18,27 @@ batch = args[1]
 file_input = args[2]
 file_nextclade = args[3]
 file_pangolin = args[4]
+file_mads = args[5]
+file_integrated_out = args[6]
+file_sample_sheet_out[7]
 
 
 devel = T
 
 if (devel) {
     rm(list = ls())
+    
     batch = "210108.3471"
+    
+    # Inputs
     file_input = "output/210108.3471/210108.3471_input.tab"
     file_nextclade = "output/210108.3471/210108.3471_nextclade.tab"
     file_pangolin = "output/210108.3471/210108.3471_pangolin.csv"
     file_mads = "mads/latest/*.csv"
-    file_out = "output/210108.3471/210108.3471_samplesheet.tsv"
+    
+    # Outputs
+    file_integrated_out = "output/210108.3471/210108.3471_integrated.tsv"
+    file_sample_sheet_out = "output/210108.3471/210108.3471_samplesheet.tsv"
 }
 
 
@@ -58,7 +67,17 @@ df_integrated = left_join(df_input, df_pangolin, by = "full_name") %>%
     left_join(df_mads, by = c("sample_name" = "prøvenr"))
 
 
+# Save the full table
+write("writing parsed input list to stdout", stderr())
+input_grouped %>% write_tsv(file_integrated_out)
+
+
+
 # Make the file ready for export and 
+
+## Select the correct columns
+
+## Filter based on quality.
 
 
 
