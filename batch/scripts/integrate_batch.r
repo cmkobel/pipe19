@@ -117,6 +117,7 @@ target_consensus = paste0("output/", batch, "/consensus_copy/")
 # Generate a table that has the commands. Then paste them to a system-command
 
 # Copy raw data
+write("commanding raw ...", stderr())
 command_raw = df_sample_sheet %>% 
     select(full_name, sample_id, raw_filename) %>% 
     rowwise() %>% 
@@ -135,6 +136,7 @@ if (!development_mode) {
 
 
 # Copy Consensus data
+write("commanding consensus' ...", stderr())
 command_consensus = df_sample_sheet %>% 
     select(full_name, sample_id, consensus_filename) %>% 
     rowwise() %>% 
@@ -155,10 +157,12 @@ if (!development_mode) {
 write("tar.gz'ing the files ...", stderr())
 system(paste("tar -czvf", file_targz_out, target_raw, target_consensus))
 
-       
+
        
 # upload the files to the government
 
+
+write("\nDone for now.", stderr())
 
 
 
