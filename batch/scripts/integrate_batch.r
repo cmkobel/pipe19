@@ -4,8 +4,8 @@
 
 
 library(tidyverse)
-devel = F
-# setwd("~/GenomeDK/ClinicalMicrobio/faststorage/pipe19/batch"); devel = T
+development_mode = F
+# setwd("~/GenomeDK/ClinicalMicrobio/faststorage/pipe19/batch"); development_mode = T
 
 
 
@@ -20,10 +20,11 @@ file_pangolin = args[4]
 file_mads = args[5]
 file_integrated_out = args[6]
 file_sample_sheet_out = args[7]
+file_targz_out = args[8]
 
 
 
-if (devel) {
+if (development_mode) {
     rm(list = ls())
     
     batch = "210108.3471"
@@ -37,6 +38,7 @@ if (devel) {
     # Outputs
     file_integrated_out = "output/210108.3471/210108.3471_integrated.tsv"
     file_sample_sheet_out = "output/210108.3471/210108.3471_samplesheet.tsv"
+    file_targz_out = "output/210108.3471/210108.3471_upload.tar.gz"
 }
 
 write("These are the args:", stderr())
@@ -88,22 +90,75 @@ df_integrated %>% write_rds(file_integrated_out)
 ## Filter for samples only, and select/rename the columns of interest.
 # ”sample_id;cpr;sampling_date;kma_id;raw_filename;consensus_filename”.
 write(paste("writing sample sheet to", file_sample_sheet_out), stderr())
-df_integrated %>% filter(type == "sample") %>% 
+df_sample_sheet = df_integrated %>% filter(type == "sample") %>% 
     rowwise() %>% 
     mutate(kma_id = "6620320",
-           raw_filename = paste0(batch, ".", plate, ".", moma_serial, "_", sample_name, "_", c("R1", "R2"), extension, collapse = " "),
-           consensus_filename = paste0(batch, ".", plate, ".", moma_serial, "_", sample_name, ".fa", collapse = " ")) %>% 
+           full_name = paste0(batch, ".", plate, ".", moma_serial, "_", sample_name),
+           raw_filename = paste0(full_name, "_R", c(1, 2), ".fastq.gz", collapse = " "),
+           consensus_filename = paste0(full_name, ".fa", collapse = " "),
+           platform = "illumina qiaseq") %>% 
     ungroup() %>% 
-    select(sample_id = sample_name, cpr = `cprnr.`, sampling_date = afsendt, kma_id, raw_filename, consensus_filename) %>% 
-    write_delim(file_sample_sheet_out, delim = ";")
+    select(sample_id = sample_name, full_name, cpr = `cprnr.`, sampling_date = afsendt, kma_id, raw_filename, consensus_filename, platform, ct, sub_SKS = `Ydernr/SKSnr`) 
+
+df_sample_sheet %>%  
+    select(-full_name) %>% 
+    write_tsv(file_sample_sheet_out)
+  
+
+
+
+# tar the files together,
+# It makes sense to do it from here, because the relevant metadata is already loaded in the environment.
+target_raw = paste0("output/", batch, "/raw_copy/")
+target_consensus = paste0("output/", batch, "/consensus_copy/")
+
+  
+
+# Generate a table that has the commands. Then paste them to a system-command
+
+# Copy raw data
+command_raw = df_sample_sheet %>% 
+    select(full_name, sample_id, raw_filename) %>% 
+    rowwise() %>% 
+    mutate(raw_filename_splitted = str_split(raw_filename, " "),
+           source_files = paste0("../output/", full_name, "/trimmed_reads/", raw_filename_splitted, collapse = " "),
+           target_dir = target_raw) %>% 
+    ungroup() %>% 
     
+    transmute(command = paste("cp", source_files, target_dir))
 
-## Filter based on quality.
+command_raw %>% write_tsv(paste0("output/", batch, "/cp_raw.log"))
+
+if (!development_mode) {
+  system(command_raw %>% pull(command) %>% paste(collapse = "; "))
+}
 
 
+# Copy Consensus data
+command_consensus = df_sample_sheet %>% 
+    select(full_name, sample_id, consensus_filename) %>% 
+    rowwise() %>% 
+    mutate(source_file = paste0("../output/", full_name, "/consensus/", consensus_filename),
+         target_dir = target_consensus) %>% 
+    ungroup() %>% 
+  
+    transmute(command = paste("cp", source_file, target_dir))
 
+command_consensus %>% write_tsv(paste0("output/", batch, "/cp_consensus.log"))
 
-# Collect and compress files
+if (!development_mode) {
+    system(command_consensus %>% pull(command) %>% paste(collapse = "; "))
+}
+
+# Tar the files
+# Could also be called from the workflow. But here it is possibly easier.
+write("tar.gz'ing the files ...", stderr())
+system(paste("tar -czvf", file_targz_out, target_raw, target_consensus))
+
+       
+       
+# upload the files to the government
+
 
 
 

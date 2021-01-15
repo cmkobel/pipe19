@@ -14,7 +14,8 @@ gwf = Workflow(defaults={
     "mail_user": "kobel@pm.me",
     "mail_type": "FAIL",
     "account": "clinicalmicrobio",
-    "memory": '2g'
+    "memory": '2g',
+    "walltime": "02:00:00"
 })
 
 

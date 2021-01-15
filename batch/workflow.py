@@ -1,13 +1,13 @@
 from gwf import Workflow
 
-from templates import *
 import pandas as pd
 
 gwf = Workflow(defaults={
     "mail_user": "kobel@pm.me",
     "mail_type": "FAIL",
     "account": "clinicalmicrobio",
-    "memory": '2g'
+    "memory": '2g',
+    "walltime": "02:00:00"
 })
 
 
@@ -59,16 +59,25 @@ for index, row in df.iterrows():
     target1 = gwf.target(f"b1_R____{prefix}",
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.rds",
-                   f"{output_base}/{prefix}/{prefix}_sample_sheet.csv"],
-        memory = '4g')
+                   f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
+                   f"{output_base}/{prefix}/{prefix}.zip"],
+        memory = '4g',
+        walltime = '04:00:00')
     target1 << \
         f"""
+
+        mkdir -p {output_base}/{prefix}/raw_copy
+        mkdir -p {output_base}/{prefix}/consensus_copy
 
 
         # This file joins everything together, compresses and the files and produces a metadata file for SSI
         singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/integrate_batch.r {prefix} {target1.inputs[0]} {target1.inputs[1]} {target1.inputs[2]} "mads/latest/*.csv" {target1.outputs[0]} {target1.outputs[1]}
-        #                                            1                   2                   3                   4                   5                    6                    7
+            Rscript scripts/integrate_batch.r {prefix} {target1.inputs[0]} {target1.inputs[1]} {target1.inputs[2]} "mads/latest/*.csv" {target1.outputs[0]} {target1.outputs[1]} {target1.outputs[2]}
+        #                                            1                   2                   3                   4                   5                    6                    7                    8
+
+
+
+
 
 
         """
@@ -77,4 +86,5 @@ for index, row in df.iterrows():
 
 
     break
+
 
