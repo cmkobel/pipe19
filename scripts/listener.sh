@@ -1,0 +1,1 @@
+watch "running_jobs=$(squeue -h -u $USER | wc -l); [[ $running_jobs -eq 0 ]] && echo hej"

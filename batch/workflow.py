@@ -58,11 +58,12 @@ for index, row in df.iterrows():
 
     target1 = gwf.target(f"b1_R____{prefix}",
         inputs = target0.outputs,
-        outputs = [f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
-                   f"{output_base}/{prefix}/{prefix}_integrated.rds"],
+        outputs = [f"{output_base}/{prefix}/{prefix}_integrated.rds",
+                   f"{output_base}/{prefix}/{prefix}_sample_sheet.csv"],
         memory = '4g')
     target1 << \
         f"""
+
 
         # This file joins everything together, compresses and the files and produces a metadata file for SSI
         singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
