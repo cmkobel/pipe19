@@ -60,7 +60,7 @@ for index, row in df.iterrows():
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.rds",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
-                   f"{output_base}/{prefix}/{prefix}.zip"],
+                   f"{output_base}/{prefix}/{prefix}_upload.tar.gz"],
         memory = '4g',
         walltime = '04:00:00')
     target1 << \
@@ -76,6 +76,7 @@ for index, row in df.iterrows():
         #                                            1                   2                   3                   4                   5                    6                    7                    8
 
 
+        # TODO: consider removing the raw and consensus copies
 
 
 
