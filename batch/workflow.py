@@ -58,14 +58,17 @@ for index, row in df.iterrows():
 
     target1 = gwf.target(f"b1_R____{prefix}",
         inputs = target0.outputs,
-        outputs = f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv", 
+        outputs = [f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
+                   f"{output_base}/{prefix}/{prefix}_integrated.rds"],
         memory = '4g')
     target1 << \
         f"""
 
         # This file joins everything together, compresses and the files and produces a metadata file for SSI
         singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/integrate_batch.r
+            Rscript scripts/integrate_batch.r {prefix} {target1.inputs[0]} {target1.inputs[1]} {target1.inputs[2]} "mads/latest/*.csv" {target1.outputs[0]} {target1.outputs[1]}
+        #                                            1                   2                   3                   4                   5                    6                    7
+
 
         """
 

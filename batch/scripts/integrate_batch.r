@@ -69,7 +69,7 @@ df_integrated = left_join(df_input, df_pangolin, by = "full_name") %>%
 
 # Save the full table
 write("writing parsed input list to stdout", stderr())
-input_grouped %>% write_tsv(file_integrated_out)
+input_grouped %>% write_rds(file_integrated_out)
 
 
 
