@@ -73,8 +73,7 @@ for index, row in df.iterrows():
     else:
         mads_year = 21
 
-
-    #batch_long = f"{row['batch']}" # e.g. 210108
+    batch_long = f"{row['batch']}" # e.g. 210108
 
     print(f"Batch {index}: {row['batch']}, {row['path']}")
 
@@ -105,7 +104,7 @@ for index, row in df.iterrows():
     for batch_index, batch_row in batch_df.iterrows():
 
         sample_name = f"{batch_row['sample_name']}"
-        full_name = f"{row['batch']}.{batch_row['moma_serial']}_{batch_row['sample_name']}"
+        full_name = f"{row['batch']}.{batch_row['plate']}.{batch_row['moma_serial']}_{batch_row['sample_name']}"
         full_name_clean = full_name.replace(".", "_") # Because gwf or slurm somehow is not compatible with dots!?
 
         print(full_name, end = " ")

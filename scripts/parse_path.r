@@ -66,10 +66,10 @@ input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%
 
 
 # Backwards compatibility:
-# If no plate number is given in the file name, insert 0000
+# If no plate number is given in the file name, insert 9999
 if (format_specifier == "formatA") {
     input = input %>% 
-        mutate(plate = "0000")
+        mutate(plate = "9999")
 } # else: do nothing - the plate number will be given by the filename.
 
  
