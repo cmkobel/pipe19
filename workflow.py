@@ -47,7 +47,7 @@ config = {'reference': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/pri
           'singularity_images': "~/faststorage/singularity_images"}
 
 
-df = pd.read_table(input_list_file, sep="\t", names = ["batch", "plate", "path", "method"], comment = "#")
+df = pd.read_table(input_list_file, sep="\t", names = ["batch", "path", "format_specifier"], comment = "#")
 batches_done = pd.read_table(batches_done_file, sep = "\t", names = ["batch"])
 
 
@@ -68,16 +68,17 @@ for index, row in df.iterrows():
     # if row["bath"] in batches_done:
         #continue
 
-    if row["method"] == "formatA":
+    if row["format_specifier"] == "formatA":
         mads_year = 20 
     else:
         mads_year = 21
 
-    batch_long = f"{row['batch']}.{row['plate']}" # e.g. 210108.3471
 
-    print(f"Batch {index}: {batch_long}, {row['path']}")
+    #batch_long = f"{row['batch']}" # e.g. 210108
 
-    batch_input_file = f"{input_base}/{batch_long}.tab"
+    print(f"Batch {index}: {row['batch']}, {row['path']}")
+
+    batch_input_file = f"{input_base}/{row['batch']}.tab"
 
     # Check if the batch_input_file has already been written
     if os.path.exists(batch_input_file):
@@ -85,7 +86,7 @@ for index, row in df.iterrows():
     else:
         print(f" creating the file {batch_input_file}")
         try:
-            command = f"singularity run docker://rocker/tidyverse Rscript scripts/parse_path.r {row['batch']} {row['plate']} {row['path']} {mads_year} TRUE > other/input_tmp.tab && mv other/input_tmp.tab {batch_input_file}" # TODO: delete the batch_input_file if it is empty 
+            command = f"singularity run docker://rocker/tidyverse Rscript scripts/parse_path.r {row['batch']} {row['path']} {mads_year} TRUE {row['format_specifier']} > other/input_tmp.tab && mv other/input_tmp.tab {batch_input_file}" # TODO: delete the batch_input_file if it is empty 
             subprocess.run(command, shell = True, check = True)
         except subprocess.CalledProcessError as e:
             print(f"\nAn error occured while initializing {row['batch']}:\n", e)
@@ -104,8 +105,8 @@ for index, row in df.iterrows():
     for batch_index, batch_row in batch_df.iterrows():
 
         sample_name = f"{batch_row['sample_name']}"
-        full_name = f"{batch_long}.{batch_row['moma_serial']}_{batch_row['sample_name']}"
-        full_name_clean = full_name.replace(".", "_")
+        full_name = f"{row['batch']}.{batch_row['moma_serial']}_{batch_row['sample_name']}"
+        full_name_clean = full_name.replace(".", "_") # Because gwf or slurm somehow is not compatible with dots!?
 
         print(full_name, end = " ")
 

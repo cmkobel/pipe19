@@ -14,7 +14,7 @@ gwf = Workflow(defaults={
 input_list_file = "../input_list.tab"
 output_base = "output"
 
-df = pd.read_table(input_list_file, sep="\t", names = ["batch", "plate", "path", "method"], comment = "#")
+df = pd.read_table(input_list_file, sep="\t", names = ["batch", "path", "method"], comment = "#")
 
 
 print(df)
@@ -29,7 +29,7 @@ for index, row in df.iterrows():
 
     print(f"Batch {index}: {row['batch']}")
 
-    prefix = f"{row['batch']}.{row['plate']}"
+    prefix = f"{row['batch']}"
 
 
     target0 = gwf.target(f"b0_coll_{prefix}",
