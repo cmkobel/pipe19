@@ -79,6 +79,11 @@ year_R = paste0("R", year)
 year_I = paste0("I", year)
 year_V = paste0("V", year)
 
+year_conversion = list(`87` = paste0("L", year),
+                       `88` = paste0("R", year),
+                       `89` = paste0("I", year),
+                       `90` = paste0("V", year))
+
 # convert 88, 89, 90  ->  R, I, V
 if (convertRIV == "TRUE") {
 write("converting RIV ...", stderr())
@@ -88,9 +93,9 @@ write("converting RIV ...", stderr())
                sample_name_suffix = str_sub(sample_name, 3),
                markRIV = if_else(str_detect(sample_name_prefix, "(88|89|90)"), T, F),
                sample_name_prefix_converted = recode(sample_name_prefix,
-                                                     "88" = year_R,
-                                                     "89" = year_I,
-                                                     "90" = year_V),
+                                                     "88" = year_conversion$`88`,
+                                                     "89" = year_conversion$`89`,
+                                                     "90" = year_conversion$`90`),
                reconst_sample_name = paste0(sample_name_prefix_converted, sample_name_suffix)) %>% 
         
         # Make it look like it never happened

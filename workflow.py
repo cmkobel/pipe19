@@ -204,7 +204,7 @@ for index, row in df.iterrows():
 
                 mkdir -p {output_base}/{full_name}/consensus
 
-                samtools mpileup -A -Q 0 -d 0 {output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam | ivar consensus -q 30 -p {output_base}/{full_name}/consensus/{full_name}.fa -m 10 -n N
+                samtools mpileup -A -Q 0 -d 0 {output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam | ivar consensus -q 30 -t 0.8 -p {output_base}/{full_name}/consensus/{full_name}.fa -m 10 -n N
 
                 """
 
