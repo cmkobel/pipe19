@@ -180,7 +180,7 @@ for index, row in df.iterrows():
             rm $mapped
 
 
-            # Trim alignment
+            # Trim primers and overall quality
             echo "trimming ..."
             ivar trim -e -i $renamed -b {config['bed_file']} -p $tmptrimmed -q 30
             rm $renamed 
