@@ -76,6 +76,7 @@ for index, row in df.iterrows():
 
 
         # TODO: put the catting and compression into another script
+        # This will make the surveillance of dangerous variants faster.
 
 
         # This file joins everything together, compresses and the files and produces a metadata file for SSI
