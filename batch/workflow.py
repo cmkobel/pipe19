@@ -75,6 +75,8 @@ for index, row in df.iterrows():
 
 
 
+        # TODO: put the catting and compression into another script
+
 
         # This file joins everything together, compresses and the files and produces a metadata file for SSI
         singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
