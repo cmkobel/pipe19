@@ -64,7 +64,6 @@ print()
 
 # Iterate over each line in input_list_file
 for index, row in df.iterrows():
-    print()
     # if row["bath"] in batches_done:
         #continue
 
@@ -75,6 +74,9 @@ for index, row in df.iterrows():
 
     batch_long = f"{row['batch']}" # e.g. 210108
 
+    print()
+    print()
+    print()
     print(f"Batch {index}: {row['batch']}, {row['path']}")
 
     batch_input_file = f"{input_base}/{row['batch']}.tab"
@@ -95,12 +97,13 @@ for index, row in df.iterrows():
     # Now the batch_input_file file has surely been written, and we can start the actual pipeline
     batch_df = pd.read_table(batch_input_file, sep = "\t")
 
+    print()
     print(batch_df)
     print("//")
     print()
 
     # TODO: Check that the batch given in input list is similar to the batch specified in the batch_input_file
-
+    batch_sample_list = []
     for batch_index, batch_row in batch_df.iterrows():
 
         sample_name = f"{batch_row['sample_name']}"
@@ -108,6 +111,7 @@ for index, row in df.iterrows():
         full_name_clean = full_name.replace(".", "_") # Because gwf or slurm somehow is not compatible with dots!?
 
         print(full_name, end = " ")
+
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
         t_cat = gwf.target(f"_cat__{full_name_clean}",
@@ -289,3 +293,5 @@ for index, row in df.iterrows():
 
 
 
+print()
+print()

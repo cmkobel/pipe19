@@ -117,7 +117,7 @@ target_consensus = paste0("output/", batch, "/consensus_copy/")
 # Generate a table that has the commands. Then paste them to a system-command
 
 # Copy raw data
-write("commanding raw ...", stderr())
+write("commanding raws ...", stderr())
 command_raw = df_sample_sheet %>% 
     select(full_name, sample_id, raw_filename) %>% 
     rowwise() %>% 
@@ -154,17 +154,21 @@ if (!development_mode) {
 
 # Tar the files
 # Could also be called from the workflow. But here it is possibly easier.
-write("tar.gz'ing the files ...", stderr())
-system(paste0("tar -czvf ", file_targz_out, "raw -C ", target_raw))
-system(paste0("tar -czvf ", file_targz_out, "consensus -C ", target_consensus))
-
-write("catting the targz together", stderr())
-system(paste0("cat ", file_targz_out, "consensus ", file_targz_out, "consensus ", file_targz_out))
-
-
 # TODO: Consider deleting some intermediary files
 
-# cat the files together
+write("compressing raw ...", stderr())
+system(paste0("cd ", target_raw, "; tar -czvf ../raw.tar.gz *"))
+
+write("compressing consensus ...", stderr())
+system(paste0("cd ", target_consensus, "; tar -czvf ../consensus.tar.gz *"))
+
+
+write("catting ...", stderr())
+system(paste0("cat output/", batch, "/consensus.tar.gz output/", batch, "/raw.tar.gz > ", file_targz_out))
+
+
+
+
 
 
        

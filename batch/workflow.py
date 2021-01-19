@@ -85,7 +85,8 @@ for index, row in df.iterrows():
 
         """
 
-    batch_done_list = batch_done_list + target1.outputs
+    # Add the output files for the last per-batch target
+    batch_done_list += target1.outputs
 
 
 
@@ -99,11 +100,11 @@ print("batch_done_list", batch_done_list)
 
 target2 = gwf.target(f"b2_collect_all",
     inputs = batch_done_list,
-    outputs = "")
+    outputs = "all_batches_integrated.tsv")
 target2 << \
     f"""
     singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/integrate_batch.r {prefix} 
+            Rscript scripts/collect_batches.r {target2.outputs}
 
     """
 
