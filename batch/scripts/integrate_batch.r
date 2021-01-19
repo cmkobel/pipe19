@@ -159,7 +159,7 @@ system(paste0("tar -czvf ", file_targz_out, "raw -C ", target_raw))
 system(paste0("tar -czvf ", file_targz_out, "consensus -C ", target_consensus))
 
 write("catting the targz together", stderr())
-system(paste0("cat ", file_targz_out, "consensus ", file=targz_out, "consensus ", file_targz_out))
+system(paste0("cat ", file_targz_out, "consensus ", file_targz_out, "consensus ", file_targz_out))
 
 
 # TODO: Consider deleting some intermediary files
