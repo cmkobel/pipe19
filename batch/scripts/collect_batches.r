@@ -17,4 +17,4 @@ for (batch_integrated in Sys.glob("output/*/*.tsv")) {
 
 
 data %>% write_tsv(paste0("backup_all_batches_integrated/", format(Sys.time(), "%Y-%m-%d_%H.%M.%S"), ".tsv"))
-data %>% write_tsv(out_fsa)
+data %>% write_tsv(out_file)

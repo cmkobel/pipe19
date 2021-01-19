@@ -109,8 +109,9 @@ df_sample_sheet %>%
 
 # tar the files together,
 # It makes sense to do it from here, because the relevant metadata is already loaded in the environment.
-target_raw = paste0("output/", batch, "/raw_copy/")
-target_consensus = paste0("output/", batch, "/consensus_copy/")
+target_copy = paste0("output/", batch, "/compress")
+#target_raw = paste0("output/", batch, "/raw_copy/")
+#target_consensus = paste0("output/", batch, "/consensus_copy/")
 
   
 
@@ -123,7 +124,7 @@ command_raw = df_sample_sheet %>%
     rowwise() %>% 
     mutate(raw_filename_splitted = str_split(raw_filename, " "),
            source_files = paste0("../output/", full_name, "/trimmed_reads/", raw_filename_splitted, collapse = " "),
-           target_dir = target_raw) %>% 
+           target_dir = target_copy) %>% 
     ungroup() %>% 
     
     transmute(command = paste("cp", source_files, target_dir))
@@ -141,7 +142,7 @@ command_consensus = df_sample_sheet %>%
     select(full_name, sample_id, consensus_filename) %>% 
     rowwise() %>% 
     mutate(source_file = paste0("../output/", full_name, "/consensus/", consensus_filename),
-         target_dir = target_consensus) %>% 
+         target_dir = target_copy) %>% 
     ungroup() %>% 
   
     transmute(command = paste("cp", source_file, target_dir))
@@ -156,15 +157,9 @@ if (!development_mode) {
 # Could also be called from the workflow. But here it is possibly easier.
 # TODO: Consider deleting some intermediary files
 
-write("compressing raw ...", stderr())
-system(paste0("cd ", target_raw, "; tar -czvf ../raw.tar.gz *"))
+write("compressing ...", stderr())
+system(paste0("cd ", target_copy, "; tar -czvf ../../../", file_targz_out, " *"))
 
-write("compressing consensus ...", stderr())
-system(paste0("cd ", target_consensus, "; tar -czvf ../consensus.tar.gz *"))
-
-
-write("catting ...", stderr())
-system(paste0("cat output/", batch, "/consensus.tar.gz output/", batch, "/raw.tar.gz > ", file_targz_out))
 
 
 

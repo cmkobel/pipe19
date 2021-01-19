@@ -68,8 +68,12 @@ for index, row in df.iterrows():
     target1 << \
         f"""
 
-        mkdir -p {output_base}/{prefix}/raw_copy
-        mkdir -p {output_base}/{prefix}/consensus_copy
+        # mkdir -p {output_base}/{prefix}/raw_copy
+        # mkdir -p {output_base}/{prefix}/consensus_copy
+
+        mkdir -p {output_base}/{prefix}/compress
+
+
 
 
         # This file joins everything together, compresses and the files and produces a metadata file for SSI
@@ -91,11 +95,11 @@ for index, row in df.iterrows():
 
 
 
-    break
+    # break # Debug for testing a single batch
 
 
 
-print("batch_done_list", batch_done_list)
+#print("batch_done_list", batch_done_list)
 
 
 target2 = gwf.target(f"b2_collect_all",
