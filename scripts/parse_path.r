@@ -41,6 +41,10 @@ if (format_specifier == "formatA") {
     column_format = c("sample_name", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
 } else if (format_specifier == "formatB") {
     column_format = c("sample_name", "plate", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
+} else if (format_specifier == "formatC") {
+    column_format = c("sample_name", "plate", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
+} else {
+    stop(paste("format specifier", column_format, "is not supported."))
 }
 
 
@@ -75,12 +79,6 @@ if (format_specifier == "formatA") {
  
 # Insert the year for the samples
 # TODO: This should be a list instead
-year_R = paste0("R", year)
-year_I = paste0("I", year)
-year_V = paste0("V", year)
-
-
-
 
 
 if (convertRIV == "TRUE") {
@@ -89,13 +87,13 @@ write("converting RIV ...", stderr())
         #separate(sample_name, c("mads_type", "mads_sub_sample_name"), 2) 
         mutate(sample_name_prefix = str_sub(sample_name, 1, 2),
                sample_name_suffix = str_sub(sample_name, 3),
-               markRIV = if_else(str_detect(sample_name_prefix, "(88|89|90)"), T, F),
+               markRIV = if_else(str_detect(sample_name_prefix, "(87|88|89|90|96)"), T, F), # TODO: Bad idea to mention it twice
                sample_name_prefix_converted = recode(sample_name_prefix,
-                                                     "87" = "L",
-                                                     "88" = "R",
-                                                     "89" = "I",
-                                                     "90" = "V",
-                                                     "96" = "P"),
+                                                     "87" = paste0("L", year),
+                                                     "88" = paste0("R", year),
+                                                     "89" = paste0("I", year),
+                                                     "90" = paste0("V", year),
+                                                     "96" = paste0("P", year)),
                reconst_sample_name = paste0(sample_name_prefix_converted, sample_name_suffix)) %>% 
         
         # Make it look like it never happened

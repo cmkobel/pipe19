@@ -67,10 +67,14 @@ for index, row in df.iterrows():
     # if row["bath"] in batches_done:
         #continue
 
-    if row["format_specifier"] == "formatA":
+    if row["format_specifier"] == "formatA": # I dette format kunne plate-id ikke gennemskues fra fil-navnene og det skulle derfor gives for hvert batch
         mads_year = 20 
-    else:
+    elif row["format_specifier"] == "formatB": # ... fordi der kan være flere plates per batch, var det nødvendigt at skifte til inducering af plate-id fra fil-navn
+        mads_year = 20
+    elif row["format_specifier"] == "FormatC": # Dette format skal bruges når alle prøver er fra 2021
         mads_year = 21
+    else:
+        raise Exception(f"format specifier: {row['format_specifier']} is not supported.")
 
     batch_long = f"{row['batch']}" # e.g. 210108
 
