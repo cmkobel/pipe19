@@ -21,6 +21,8 @@ print(df)
 print("//")
 print()
 
+batch_done_list = []
+
 
 # Iterate over each line in input_list_file
 for index, row in df.iterrows():
@@ -58,7 +60,7 @@ for index, row in df.iterrows():
 
     target1 = gwf.target(f"b1_R____{prefix}",
         inputs = target0.outputs,
-        outputs = [f"{output_base}/{prefix}/{prefix}_integrated.rds",
+        outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
                    f"{output_base}/{prefix}/{prefix}_upload.tar.gz"],
         memory = '4g',
@@ -83,8 +85,25 @@ for index, row in df.iterrows():
 
         """
 
+    batch_done_list = batch_done_list + target1.outputs
 
 
 
 
+    break
+
+
+
+print("batch_done_list", batch_done_list)
+
+
+target2 = gwf.target(f"b2_collect_all",
+    inputs = batch_done_list,
+    outputs = "")
+target2 << \
+    f"""
+    singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+            Rscript scripts/integrate_batch.r {prefix} 
+
+    """
 

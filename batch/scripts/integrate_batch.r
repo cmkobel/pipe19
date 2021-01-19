@@ -27,18 +27,18 @@ file_targz_out = args[8]
 if (development_mode) {
     rm(list = ls())
     
-    batch = "210108.3471"
+    batch = "210108"
     
     # Inputs
-    file_input = "output/210108.3471/210108.3471_input.tab"
-    file_nextclade = "output/210108.3471/210108.3471_nextclade.tab"
-    file_pangolin = "output/210108.3471/210108.3471_pangolin.csv"
+    file_input = "output/210108/210108_input.tab"
+    file_nextclade = "output/210108/210108_nextclade.tab"
+    file_pangolin = "output/210108/210108_pangolin.csv"
     file_mads = "mads/latest/*.csv"
     
     # Outputs
-    file_integrated_out = "output/210108.3471/210108.3471_integrated.tsv"
-    file_sample_sheet_out = "output/210108.3471/210108.3471_samplesheet.tsv"
-    file_targz_out = "output/210108.3471/210108.3471_upload.tar.gz"
+    file_integrated_out = "output/210108/210108_integrated.tsv"
+    file_sample_sheet_out = "output/210108/210108_samplesheet.tsv"
+    file_targz_out = "output/210108/210108_upload.tar.gz"
 }
 
 write("These are the args:", stderr())
@@ -82,7 +82,7 @@ df_integrated = left_join(df_input, df_pangolin, by = "full_name") %>%
 
 # Save the full table
 write(paste("writing df_integrated to", file_integrated_out), stderr())
-df_integrated %>% write_rds(file_integrated_out)
+df_integrated %>% write_tsv(file_integrated_out)
 
 
 
@@ -98,7 +98,7 @@ df_sample_sheet = df_integrated %>% filter(type == "sample") %>%
            consensus_filename = paste0(full_name, ".fa", collapse = " "),
            platform = "illumina qiaseq") %>% 
     ungroup() %>% 
-    select(sample_id = sample_name, full_name, cpr = `cprnr.`, sampling_date = afsendt, kma_id, raw_filename, consensus_filename, platform, ct, sub_SKS = `Ydernr/SKSnr`) 
+    select(sample_id = sample_name, full_name, cpr = `cprnr.`, sampling_date = afsendt, kma_id, raw_filename, consensus_filename, platform, ct) # Consider including Ydernr/SKSnr
 
 df_sample_sheet %>%  
     select(-full_name) %>% 
@@ -155,12 +155,20 @@ if (!development_mode) {
 # Tar the files
 # Could also be called from the workflow. But here it is possibly easier.
 write("tar.gz'ing the files ...", stderr())
-system(paste("tar -czvf", file_targz_out, target_raw, target_consensus))
+system(paste0("tar -czvf ", file_targz_out, "raw -C ", target_raw))
+system(paste0("tar -czvf ", file_targz_out, "consensus -C ", target_consensus))
+
+write("catting the targz together", stderr())
+system(paste0("cat ", file_targz_out, "consensus ", file=targz_out, "consensus ", file_targz_out))
+
+
+# TODO: Consider deleting some intermediary files
+
+# cat the files together
 
 
        
-# upload the files to the government
-
+# upload the files via FTP
 
 write("\nDone for now.", stderr())
 

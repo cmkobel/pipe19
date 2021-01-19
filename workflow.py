@@ -280,10 +280,9 @@ for index, row in df.iterrows():
             """
 
 
-        # Rscript that collects all the metadata together.
-        #t_Rscript = gwf.target
 
-        #break
+
+        #break # Run a single sample only (for testing)
 
         
 
