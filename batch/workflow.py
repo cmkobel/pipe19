@@ -14,6 +14,7 @@ gwf = Workflow(defaults={
 input_list_file = "../input_list.tab"
 output_base = "output"
 
+# TODO: Use the input files in ../input/* instead of the input_list.tab file. Using the latter means that the batch pipelin will run all over each time the input_list.tab file is touched.
 df = pd.read_table(input_list_file, sep="\t", names = ["batch", "path", "method"], comment = "#")
 
 

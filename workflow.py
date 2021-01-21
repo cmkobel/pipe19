@@ -62,17 +62,39 @@ print("//")
 print()
 
 
+t_update = gwf.target(f"_upda_",
+    inputs = input_list_file,
+    outputs = [f"other/classification_update_log.txt"])
+t_update << \
+    f"""
+
+    echo "pulling images ..."
+    singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
+    singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
+
+    echo "updating version-list"
+    singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
+    singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
+
+
+
+    """
+
+
+
 # Iterate over each line in input_list_file
 for index, row in df.iterrows():
     # if row["bath"] in batches_done:
         #continue
 
-    if row["format_specifier"] == "formatA": # I dette format kunne plate-id ikke gennemskues fra fil-navnene og det skulle derfor gives for hvert batch
-        mads_year = 20 
-    elif row["format_specifier"] == "formatB": # ... fordi der kan være flere plates per batch, var det nødvendigt at skifte til inducering af plate-id fra fil-navn
-        mads_year = 20
-    elif row["format_specifier"] == "FormatC": # Dette format skal bruges når alle prøver er fra 2021
+    # Når disse format_specifiers opdateres, er det vigtigt at 
+    if row["format_specifier"] == "formatA" or row["format_specifier"] == "formatB": 
         mads_year = 21
+    elif row["format_specifier"] == "formatC" or row["format_specifier"] == "formatD": 
+        mads_year = 20
+    elif row["format_specifier"] == "formatE":
+        print(f"\nwarning: refusing to run the batch input list r-script (scripts/parse_path.r), since the input is from mixed years.")
+        mads_year = 70 # 70 because it is the least probable year to observe a sample from (backwards and forwards in time)
     else:
         raise Exception(f"format specifier: {row['format_specifier']} is not supported.")
 
@@ -106,6 +128,8 @@ for index, row in df.iterrows():
     print("//")
     print()
 
+
+
     # TODO: Check that the batch given in input list is similar to the batch specified in the batch_input_file
     batch_sample_list = []
     for batch_index, batch_row in batch_df.iterrows():
@@ -115,6 +139,7 @@ for index, row in df.iterrows():
         full_name_clean = full_name.replace(".", "_") # Because gwf or slurm somehow is not compatible with dots!?
 
         print(full_name, end = " ")
+
 
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
@@ -219,7 +244,7 @@ for index, row in df.iterrows():
 
         # Pangolin 
         t_pangolin = gwf.target(f"_pang_{full_name_clean}",
-            inputs = t_consensus.outputs,
+            inputs = [t_consensus.outputs, t_update.outputs[0]],
             outputs = [f"{output_base}/{full_name}/pangolin",
                        f"{output_base}/{full_name}/pangolin/{full_name}_pangolin.csv"])
         t_pangolin << \
@@ -229,7 +254,7 @@ for index, row in df.iterrows():
 
 
             singularity run {config['singularity_images']}/pangolin_latest.sif \
-                pangolin {t_pangolin.inputs} \
+                pangolin {t_pangolin.inputs[0]} \
                     --threads 1 \
                     --outdir {t_pangolin.outputs[0]}
 
@@ -254,7 +279,7 @@ for index, row in df.iterrows():
 
         # Nextclade
         t_nextclade = gwf.target(f"_next_{full_name_clean}",
-            inputs = t_consensus.outputs,
+            inputs = [t_consensus.outputs, t_update.outputs[0]],
             outputs = {'dir': f"{output_base}/{full_name}/nextclade",
                        'tab': f"{output_base}/{full_name}/nextclade/{full_name}_nextclade.tab"},
             memory = '4g') 
@@ -265,7 +290,7 @@ for index, row in df.iterrows():
 
             singularity run {config['singularity_images']}/nextclade_latest.sif \
                     nextclade.js \
-                        --input-fasta {t_nextclade.inputs} \
+                        --input-fasta {t_nextclade.inputs[0]} \
                         --output-tsv {t_nextclade.outputs['tab']}.tmp
 
             ./scripts/dos2unix {t_nextclade.outputs['tab']}.tmp
