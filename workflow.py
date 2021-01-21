@@ -72,10 +72,9 @@ t_update << \
     singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
     singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
 
-    echo "updating version-list"
+    echo "updating version-list ..."
     singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
     singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
-
 
 
     """
