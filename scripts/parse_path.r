@@ -36,16 +36,22 @@ if (devel) {
     format_specifier = "formatA"
 }
 
-
-if (format_specifier == "formatA") {
+# Segregate whether the plate id can be found in the filen 
+if (format_specifier == "formatA" | format_specifier == "formatC") { 
+  
     column_format = c("sample_name", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
-} else if (format_specifier == "formatB") {
-    column_format = c("sample_name", "plate", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
-} else if (format_specifier == "formatC") {
-    column_format = c("sample_name", "plate", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
+    
+    
+} else if (format_specifier == "formatB" | format_specifier == "formatD") { 
+   
+   column_format = c("sample_name", "plate", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
+   
 } else {
-    stop(paste("format specifier", column_format, "is not supported."))
+  
+  stop(paste("format specifier", column_format, "is not supported."))
+  
 }
+# Remember to also update the if statement about formats further down.
 
 
 write("reading list of files ...", stderr())
@@ -71,7 +77,7 @@ input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%
 
 # Backwards compatibility:
 # If no plate number is given in the file name, insert 9999
-if (format_specifier == "formatA") {
+if (format_specifier == "formatA" | format_specifier == "formatC") {
     input = input %>% 
         mutate(plate = "9999")
 } # else: do nothing - the plate number will be given by the filename.

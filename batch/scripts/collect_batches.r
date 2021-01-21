@@ -9,8 +9,10 @@ write(paste("arguments given: ", paste(args, collapse = ", ")), stderr())
 out_file = args[1]
 
 data = tibble()
-for (batch_integrated in Sys.glob("output/*/*.tsv")) {
-    tmp = read_tsv(batch_integrated)
+for (batch_integrated in Sys.glob("output/*/*_integrated.tsv")) {
+    tmp = read_tsv(batch_integrated) %>%
+	mutate(qc.overallScore = as.numeric(qc.overallScore))
+# todo: read the csv correctly
     data = bind_rows(data, tmp)
 }
 
@@ -18,3 +20,4 @@ for (batch_integrated in Sys.glob("output/*/*.tsv")) {
 
 data %>% write_tsv(paste0("backup_all_batches_integrated/", format(Sys.time(), "%Y-%m-%d_%H.%M.%S"), ".tsv"))
 data %>% write_tsv(out_file)
+
