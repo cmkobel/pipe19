@@ -98,7 +98,7 @@ df_integrated_ranked %>%
   
   
 df_integrated = df_integrated_ranked %>% 
-  filter(rank == 1) %>%  # Always picks the newest sample, when there are conflicts.
+  filter(rank == 1 | is.na(rank)) %>%  # Always picks the newest sample, when there are conflicts. The ones with NA-value are the ones where no match was found in the mads-extract, possibly because the mads-extract is too old.
   ungroup() %>% 
   select(final_sample_name, everything(), -rank)
 
