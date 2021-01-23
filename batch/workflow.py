@@ -141,10 +141,10 @@ for index, input_file in enumerate(df):
         # compress
         echo "compressing ..."
         cd {output_base}/{prefix}/compress
-        tar -czvf ../{target2.outputs[0]} *
+        tar -czvf ../../../{target2.outputs[0]} *
 
         echo "touching final flag ..."
-        touch ../{target2.outputs[1]}
+        touch ../../../{target2.outputs[1]}
 
 
 
@@ -171,10 +171,10 @@ for index, input_file in enumerate(df):
 #print("batch_done_list", batch_done_list)
 
 
-target2 = gwf.target(f"b2_collect_all",
+target3 = gwf.target(f"b2_collect_all",
     inputs = batch_done_list,
     outputs = "all_batches_integrated.tsv")
-target2 << \
+target3 << \
     f"""
     singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/collect_batches.r {target2.outputs}

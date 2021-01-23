@@ -1,5 +1,5 @@
 devel = F
-#rm(list = ls()); devel = T
+# rm(list = ls()); devel = T
 
 
 
@@ -70,7 +70,7 @@ input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%
     separate(extension, c("001", "extension"), 3) %>% 
     
     # add a column that tells whether the file is a control or not
-    mutate(type = if_else(str_detect(tolower(sample_name), "negativ|positiv|blank|tom|^Afd|^00"),
+    mutate(type = if_else(str_detect(tolower(sample_name), "negativ|positiv|blank|tom|^afd|^00|^h2o"),
                           "control/other",
                           "sample"))
 

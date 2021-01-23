@@ -75,21 +75,34 @@ write(paste("these are the names of df_mads", paste(names(df_mads), collapse = "
 
 
 
-# emulate old conflict
-#mads_additional = tibble(ya_sample_name = "I293417",
+# emulate conflict with older proevenr
+# mads_additional = tibble(ya_sample_name = "R081488",
 #                        modtaget = lubridate::ymd("2019-12-30"))
-#df_mads = bind_rows(df_mads,
-#                    mads_additional)
+# df_mads = bind_rows(df_mads,
+#                     mads_additional)
+
 
 # Join everything together, taking care of conflicts in the dates..
-df_integrated = left_join(df_integrated_init, df_mads, by = "ya_sample_name") %>% 
+df_integrated_ranked = left_join(df_integrated_init, df_mads, by = "ya_sample_name") %>% 
   group_by(ya_sample_name) %>% 
-  mutate(rank = row_number((desc(modtaget)))) %>% 
-  filter(rank == 1) %>% # Always picks the newest sample, when there are conflicts.
+  mutate(rank = row_number((desc(modtaget))))
+  
+
+# output conflicts for surveillance
+df_integrated_ranked %>% 
+  filter(!is.na(rank)) %>% 
+  filter(length(ya_sample_name) >= 2) %>% 
+  ungroup() %>% 
+  select(batch, final_sample_name, ya_sample_name, raw_sample_name, modtaget, rank) %>% 
+  write_tsv(paste0("output/", batch, "/conflicts.tsv"))
+  
+  
+df_integrated = df_integrated_ranked %>% 
+  filter(rank == 1) %>%  # Always picks the newest sample, when there are conflicts.
   ungroup() %>% 
   select(final_sample_name, everything(), -rank)
 
-#df_integrated %>% select(modtaget, rank, ya_sample_name) %>% View
+#df_integrated_ranked %>% select(modtaget, rank, ya_sample_name) %>% View
 
 
 # Save the full table
