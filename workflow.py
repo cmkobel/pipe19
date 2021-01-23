@@ -71,10 +71,12 @@ t_update << \
     echo "pulling images ..."
     singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
     singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
+    singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse
 
     echo "updating version-list ..."
-    singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
-    singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
+    singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
+    singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
+    singularity run {config['singularity_images']}/tidyverse_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
 
 
     """
@@ -112,7 +114,7 @@ for index, row in df.iterrows():
     else:
         print(f" creating the file {batch_input_file}")
         try:
-            command = f"singularity run docker://rocker/tidyverse Rscript scripts/parse_path.r {row['batch']} {row['path']} {mads_year} TRUE {row['format_specifier']} > other/input_tmp.tab && mv other/input_tmp.tab {batch_input_file}" # TODO: delete the batch_input_file if it is empty 
+            command = f"singularity run {config['singularity_images']}/tidyverse_latest.sif Rscript scripts/parse_path.r {row['batch']} {row['path']} {mads_year} FALSE {row['format_specifier']} > other/input_tmp.tab && mv other/input_tmp.tab {batch_input_file}" # TODO: delete the batch_input_file if it is empty 
             subprocess.run(command, shell = True, check = True)
         except subprocess.CalledProcessError as e:
             print(f"\nAn error occured while initializing {row['batch']}:\n", e)
@@ -133,8 +135,8 @@ for index, row in df.iterrows():
     batch_sample_list = []
     for batch_index, batch_row in batch_df.iterrows():
 
-        sample_name = f"{batch_row['sample_name']}"
-        full_name = f"{row['batch']}.{batch_row['plate']}.{batch_row['moma_serial']}_{batch_row['sample_name']}"
+        sample_name = f"{batch_row['raw_sample_name']}"
+        full_name = f"{row['batch']}.{batch_row['plate']}.{batch_row['moma_serial']}_{batch_row['raw_sample_name']}"
         full_name_clean = full_name.replace(".", "_") # Because gwf or slurm somehow is not compatible with dots!?
 
         print(full_name, end = " ")
@@ -243,7 +245,7 @@ for index, row in df.iterrows():
 
         # Pangolin 
         t_pangolin = gwf.target(f"_pang_{full_name_clean}",
-            inputs = [t_consensus.outputs, t_update.outputs[0]],
+            inputs = [t_consensus.outputs],
             outputs = [f"{output_base}/{full_name}/pangolin",
                        f"{output_base}/{full_name}/pangolin/{full_name}_pangolin.csv"])
         t_pangolin << \
@@ -278,7 +280,7 @@ for index, row in df.iterrows():
 
         # Nextclade
         t_nextclade = gwf.target(f"_next_{full_name_clean}",
-            inputs = [t_consensus.outputs, t_update.outputs[0]],
+            inputs = [t_consensus.outputs],
             outputs = {'dir': f"{output_base}/{full_name}/nextclade",
                        'tab': f"{output_base}/{full_name}/nextclade/{full_name}_nextclade.tab"},
             memory = '4g') 

@@ -70,8 +70,8 @@ input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%
     separate(extension, c("001", "extension"), 3) %>% 
     
     # add a column that tells whether the file is a control or not
-    mutate(type = if_else(str_detect(tolower(sample_name), "negativ|positiv"),
-                          "control",
+    mutate(type = if_else(str_detect(tolower(sample_name), "negativ|positiv|blank|tom|^Afd|^00"),
+                          "control/other",
                           "sample"))
 
 
@@ -80,48 +80,25 @@ input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%
 if (format_specifier == "formatA" | format_specifier == "formatC") {
     input = input %>% 
         mutate(plate = "9999")
-} # else: do nothing - the plate number will be given by the filename.
-
- 
-# Insert the year for the samples
-# TODO: This should be a list instead
+} # else: do nothing - the plate number will already have been given by the filename itself.
 
 
-if (convertRIV == "TRUE") {
-write("converting RIV ...", stderr())
-    input = input %>% 
-        #separate(sample_name, c("mads_type", "mads_sub_sample_name"), 2) 
-        mutate(sample_name_prefix = str_sub(sample_name, 1, 2),
-               sample_name_suffix = str_sub(sample_name, 3),
-               markRIV = if_else(str_detect(sample_name_prefix, "(87|88|89|90|96)"), T, F), # TODO: Bad idea to mention it twice
-               sample_name_prefix_converted = recode(sample_name_prefix,
-                                                     "87" = paste0("L", year),
-                                                     "88" = paste0("R", year),
-                                                     "89" = paste0("I", year),
-                                                     "90" = paste0("V", year),
-                                                     "96" = paste0("P", year)),
-               reconst_sample_name = paste0(sample_name_prefix_converted, sample_name_suffix)) %>% 
-        
-        # Make it look like it never happened
-        select(basename, plate, sample_name = reconst_sample_name, source_project, moma_serial, illumina_serial, lane, direction, `001`, extension, type)
-        
-}
 
- 
 
 sn_unique_lengths = input %>% filter(type == "sample") %>% 
     mutate(sn_len = str_length(sample_name)) %>% 
     pull(sn_len) %>% 
     unique
 
-
-if (length(sn_unique_lengths) != 1 | sn_unique_lengths != 9) {
+if (FALSE) {
+    if (length(sn_unique_lengths) != 1 | sn_unique_lengths != 9) {
+        
+        sn_unique_lengths_pasted = paste(sn_unique_lengths, collapse = " ")
+        # TODO: Consider that this should maybe be a stop instead of print
+        write(paste("Warning: The lengths of the sample names is", sn_unique_lengths_pasted, ". It ought to be 9 <LYYNNNNNN>"), stderr())
+        
     
-    sn_unique_lengths_pasted = paste(sn_unique_lengths, collapse = " ")
-    # TODO: Consider that this should maybe be a stop instead of print
-    write(paste("Warning: The lengths of the sample names is", sn_unique_lengths_pasted, ". It ought to be 9 <LYYNNNNNN>"), stderr())
-    
-
+    }
 }
 
   #########################
@@ -144,7 +121,7 @@ input_grouped = input %>%
                 values_fn = pastecollapsed) %>% 
     mutate(path = path,
            batch = batch) %>% 
-    select(batch, plate, moma_serial, sample_name, type, extension, source_project, path, R1, R2) # Reorder the columns
+    select(batch, plate, moma_serial, raw_sample_name = sample_name, type, extension, source_project, path, R1, R2) # Reorder the columns
 
 
 # Write the input_grouped table to disk so the python-gwf-workflow can be started.
