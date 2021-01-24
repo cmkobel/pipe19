@@ -11,6 +11,6 @@ This pipeline accepts the raw data from this sequencing protocol and generally f
 * Trim index-adaptors fromreads with "trim-galore"
 * Map reads with "bwa mem"
 * Trim primer regions from alignment with "iVar trim" 
-* Call consensus with "iVar consensus" (depth >= 10, min-freq >= 0.8)
+* Call consensus with "iVar consensus" (read-depth >= 10, base-frequency >= 0.8)
 * Call lineage with "Pangolin"
 * Call clade with "Nextclade"
