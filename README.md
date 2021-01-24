@@ -8,9 +8,9 @@ Swabs are purified, and the RNA is transcribed to cDNA. We use the Artic V3 prim
 This pipeline accepts the raw data from this sequencing protocol and generally follows the iVar consensus pipeline:
 
 **Steps:**
-* Trim index-adaptors fromreads with ***trim-galore***
-* Map reads with ***bwa mem***
-* Trim primer regions from alignment with ***iVar trim***
-* Call consensus with ***iVar consensus*** (read-depth >= 10, base-frequency >= 0.8)
-* Call lineage with ***Pangolin***
-* Call clade with ***Nextclade***
+* Trim index-adaptors fromreads with ***trim-galore***.
+* Map reads with ***bwa mem***.
+* Trim primer regions from alignment with ***iVar trim***.
+* Call consensus with ***iVar consensus*** (read-depth >= 10, base-frequency >= 0.8).
+* Call lineage with ***Pangolin***.
+* Call clade with ***Nextclade***.
