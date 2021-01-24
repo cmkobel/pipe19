@@ -14,8 +14,8 @@ gwf = Workflow(defaults={
     "mail_user": "kobel@pm.me",
     "mail_type": "FAIL",
     "account": "clinicalmicrobio",
-    "memory": '2g',
-    "walltime": "02:00:00"
+    "memory": '1g',
+    "walltime": "01:00:00"
 })
 
 
@@ -36,14 +36,15 @@ print("""
 """
 
 
-input_list_file = "input_list.tab"
+#input_list_file = "input_list.tab"
+input_list_file = "/faststorage/project/ClinicalMicrobio/pipe19/input_list.tab"
 batches_done_file = "other/batches_done.tab"
 input_base = "input"
 output_base = "output"
 
 
-config = {'reference': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.reference.fasta",
-          'bed_file': "../artic/ivar/artic-ncov2019_gh_clone/artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed",
+config = {'reference': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.reference.fasta",
+          'bed_file': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed",
           'singularity_images': "~/faststorage/singularity_images"}
 
 
@@ -61,8 +62,8 @@ print(df)
 print("//")
 print()
 
-
-t_update = gwf.target(f"_upda_",
+# TODO: Solve the problem, that this job could theoretically run simultaneously with the nextclade/pangolin targets.
+t_update = gwf.target(f"update",
     inputs = input_list_file,
     outputs = [f"other/classification_update_log.txt"])
 t_update << \

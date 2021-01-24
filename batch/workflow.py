@@ -41,7 +41,7 @@ for index, input_file in enumerate(df):
     print()
 
 
-    target0 = gwf.target(f"b0_coll_{prefix}",
+    target0 = gwf.target(f"b0_integrate_init_{prefix}",
         inputs = input_file,
         outputs = [f"{output_base}/{prefix}/{prefix}_input.tab",
                    f"{output_base}/{prefix}/{prefix}_nextclade.tab",
@@ -71,7 +71,7 @@ for index, input_file in enumerate(df):
 
 
         # Cat all integrated_init together
-        # TODO: Make it as a regular target
+        # TODO: Make it as a regular target with a real Rscript.
         cat output/*/*integrated_init.tsv > integrated_init.tsv
 
 
@@ -80,7 +80,7 @@ for index, input_file in enumerate(df):
         """
 
 
-    target1 = gwf.target(f"b1_R____{prefix}",
+    target1 = gwf.target(f"b1_integrate_pt___{prefix}",
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
@@ -100,14 +100,14 @@ for index, input_file in enumerate(df):
         # This will make the surveillance of dangerous variants faster.
 
 
-        # This file joins everything together, compresses and the files and produces a metadata file for SSI
+        # This file joins everything together, compresses and the files and produces a metadata file for upload
         singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/integrate_batch.r {prefix} {target1.inputs[3]} "mads/latest/*.csv" {target1.outputs[0]} {target1.outputs[1]}
         # Rscript args:                             1                   2                   3                    4                    5
 
 
         # Cat all integrated together
-        # TODO: Make it as a regular target
+        # TODO: Make it as a regular target with a real Rscript
         cat output/*/*integrated.tsv > integrated.tsv
 
 
@@ -115,10 +115,13 @@ for index, input_file in enumerate(df):
 
         """
 
+    # Add the output files for the last per-batch target
+    batch_done_list += target1.outputs
+
 
 
     # Copy, compress, and later: upload
-    target2 = gwf.target(f"b2_gzip_{prefix}",
+    target2 = gwf.target(f"b2_gzip_________{prefix}",
         inputs = target1.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_upload.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_compression_done.flag"],
@@ -158,8 +161,7 @@ for index, input_file in enumerate(df):
 
 
 
-    # Add the output files for the last per-batch target
-    batch_done_list += target1.outputs
+
 
 
 
