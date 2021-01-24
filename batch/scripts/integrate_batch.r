@@ -93,7 +93,7 @@ df_integrated_ranked %>%
   filter(!is.na(rank)) %>% 
   filter(length(ya_sample_name) >= 2) %>% 
   ungroup() %>% 
-  select(batch, final_sample_name, ya_sample_name, raw_sample_name, modtaget, rank) %>% 
+  select(`#batch` = batch, final_sample_name, ya_sample_name, raw_sample_name, modtaget, rank) %>% 
   write_tsv(paste0("output/", batch, "/conflicts.tsv"))
   
   
