@@ -156,8 +156,10 @@ for index, input_file in enumerate(df):
         cd {output_base}/{prefix}/consensus_copy
         tar -czvf ../../../{target2.outputs[0]} *
 
+
+
         echo "compressing raw..."
-        cd {output_base}/{prefix}/raw_copy
+        cd ../raw_copy
         tar -czvf ../../../{target2.outputs[1]} *
 
 
