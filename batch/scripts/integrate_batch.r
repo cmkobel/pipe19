@@ -94,7 +94,7 @@ df_integrated_ranked %>%
   filter(length(ya_sample_name) >= 2) %>% 
   ungroup() %>% 
   select(`#batch` = batch, final_sample_name, ya_sample_name, raw_sample_name, modtaget, rank) %>% 
-  write_tsv(paste0("output/", batch, "/conflicts.tsv"))
+  write_tsv(paste0("output/", batch, "/conflicts.tsv"), col_names = F)
   
   
 df_integrated = df_integrated_ranked %>% 
@@ -133,9 +133,9 @@ df_sample_sheet %>%
 
 # tar the files together,
 # It makes sense to do it from here, because the relevant metadata is already loaded in the environment.
-target_copy = paste0("output/", batch, "/compress")
-#target_raw = paste0("output/", batch, "/raw_copy/")
-#target_consensus = paste0("output/", batch, "/consensus_copy/")
+#target_copy = paste0("output/", batch, "/compress")
+target_raw = paste0("output/", batch, "/raw_copy/")
+target_consensus = paste0("output/", batch, "/consensus_copy/")
 
   
 
@@ -148,7 +148,7 @@ command_raw = df_sample_sheet %>%
     rowwise() %>% 
     mutate(raw_filename_splitted = str_split(raw_filename, " "),
            source_files = paste0("../output/", raw_full_name, "/trimmed_reads/", raw_filename_splitted, collapse = " "),
-           target_dir = target_copy) %>% 
+           target_dir = target_raw) %>% 
     ungroup() %>% 
     
     transmute(command = paste("cp", source_files, target_dir))
@@ -166,7 +166,7 @@ command_consensus = df_sample_sheet %>%
     select(raw_full_name, sample_id, consensus_filename) %>% 
     rowwise() %>% 
     mutate(source_file = paste0("../output/", raw_full_name, "/consensus/", consensus_filename),
-         target_dir = target_copy) %>% 
+         target_dir = target_consensus) %>% 
     ungroup() %>% 
   
     transmute(command = paste("cp", source_file, target_dir))

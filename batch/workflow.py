@@ -74,6 +74,9 @@ for index, input_file in enumerate(df):
         # TODO: Make it as a regular target with a real Rscript.
         cat output/*/*integrated_init.tsv > integrated_init.tsv
 
+        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+            Rscript scripts/fix_tsv.r integrated_init.tsv
+
 
 
 
@@ -89,8 +92,7 @@ for index, input_file in enumerate(df):
     target1 << \
         f"""
 
-        # mkdir -p {output_base}/{prefix}/raw_copy
-        # mkdir -p {output_base}/{prefix}/consensus_copy
+
 
         
 
@@ -110,6 +112,9 @@ for index, input_file in enumerate(df):
         # TODO: Make it as a regular target with a real Rscript
         cat output/*/*integrated.tsv > integrated.tsv
 
+        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+            Rscript scripts/fix_tsv.r integrated.tsv
+
 
 
 
@@ -123,14 +128,19 @@ for index, input_file in enumerate(df):
     # Copy, compress, and later: upload
     target2 = gwf.target(f"b2_gzip_________{prefix}",
         inputs = target1.outputs,
-        outputs = [f"{output_base}/{prefix}/{prefix}_upload.tar.gz",
+        outputs = [f"{output_base}/{prefix}/{prefix}_fasta_upload.tar.gz",
+                   f"{output_base}/{prefix}/{prefix}_raw_upload.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_compression_done.flag"],
         memory = '4g',
         walltime = '04:00:00')
     target2 << \
         f"""
 
-        mkdir -p {output_base}/{prefix}/compress
+        #mkdir -p {output_base}/{prefix}/compress
+        
+
+        mkdir -p {output_base}/{prefix}/consensus_copy
+        mkdir -p {output_base}/{prefix}/raw_copy
 
         # copy consensus
         echo "copying consensus ..."
@@ -142,12 +152,18 @@ for index, input_file in enumerate(df):
 
 
         # compress
-        echo "compressing ..."
-        cd {output_base}/{prefix}/compress
+        echo "compressing fasta..."
+        cd {output_base}/{prefix}/consensus_copy
         tar -czvf ../../../{target2.outputs[0]} *
 
+        echo "compressing raw..."
+        cd {output_base}/{prefix}/raw_copy
+        tar -czvf ../../../{target2.outputs[1]} *
+
+
+
         echo "touching final flag ..."
-        touch ../../../{target2.outputs[1]}
+        touch ../../../{target2.outputs[2]}
 
 
 
