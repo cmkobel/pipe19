@@ -5,7 +5,7 @@
 
 library(tidyverse)
 development_mode = F
-# rm(list = ls()); setwd("~/GenomeDK/ClinicalMicrobio/faststorage/pipe19/batch"); development_mode = T
+# rm(list = ls()); setwd("~/GenomeDK/clinmicrocore/pipe19/batch"); development_mode = T
 
 
 
@@ -56,23 +56,23 @@ df_integrated_init = read_tsv(file_integrated_init)
 # df_pangolin = read_delim(file_pangolin, delim = ",", comment = "#", skip = 1,
 #                          col_names = c("taxon", "lineage", "probability", "pangoLEARN_version", "status", "note", "full_name"))
 
-
-write("importing df_mads ...", stderr())
-df_mads = read_csv(Sys.glob(file_mads) %>% sort %>% tail(1), locale = locale(encoding = "WINDOWS-1252")) %>% 
+file_mads_latest = Sys.glob(file_mads) %>% sort %>% tail(1)
+write(paste("importing latest df_mads", file_mads_latest, "..."), stderr())
+df_mads = read_csv(file_mads_latest, locale = locale(encoding = "WINDOWS-1252")) %>% 
 
     rename(koen = `K<U+00D8>N`, # Hej Marc. Ved ved ikke hvorfor der er problemer med indkodningen af kolonne-navne. Derfor laver jeg manuelle oversættelser her.
            proevenr = `pr<U+00F8>venr`,
            proevekategori = `pr<U+00F8>vekategori`) %>% 
     mutate_at(vars(afsendt, modtaget), lubridate::dmy) %>%
     ##mutate_at(vars(klokken), lubridate::hm) %>% 
-    mutate(ct = coalesce(X16, X19, X22, X25, X28, X31)) %>% 
+    mutate(ct = coalesce(X16, X19, X22, X25, X28, X31, X34, X37)) %>% 
   
     mutate(final_sample_name = proevenr,
            ya_sample_name = paste0(str_sub(final_sample_name, 1, 1), str_sub(final_sample_name, -6)))
 
 write(paste("these are the names of df_mads", paste(names(df_mads), collapse = ", ")), stderr())
     
-
+#df_mads %>% select(X37, ct) %>% View
 
 
 # emulate conflict with older proevenr

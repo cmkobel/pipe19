@@ -188,7 +188,8 @@ for index, row in df.iterrows():
             outputs = {'dir': f"{output_base}/{full_name}/aligned",
                        'bam': f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"},
             cores = 4,
-            memory = '4gb')
+            memory = '4gb',
+            walltime = '03:00:00')
         t_map << \
             f"""
 
@@ -232,7 +233,8 @@ for index, row in df.iterrows():
         t_consensus = gwf.target(f"_cons_{full_name_clean}",
             inputs = t_map.outputs['bam'],
             outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa",
-            memory = '4g') << \
+            memory = '8g',
+            walltime = '03:00:00') << \
                 f"""
 
                 {conda("ivar-inpipe")}
