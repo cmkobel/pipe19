@@ -36,27 +36,26 @@ print("""
 
 """
 
-
-with open('config_example.yml') as file:
+# Read config
+with open('config.yml') as file:
     config = yaml.full_load(file)
 
 input_base = config['input_base']
 output_base = config['output_base']
 
 
-# config = {'reference': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.reference.fasta",
-#           'bed_file': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed",
-#           'singularity_images': "~/faststorage/singularity_images"}
 
 
-
-
+# Read list of input paths
 df = pd.read_table(config['input_list_file'], sep="\t", names = ["batch", "path", "format_specifier"], comment = "#")
-batches_done = pd.read_table(config['batches_done_file'], sep = "\t", names = ["batch"])
+
+# Read list of batches which are completed and hence can be ignored
+batches_done = pd.read_table(config['batches_done_file'], sep = "\t", names = ["batch"])['batch'].tolist()
 
 
+# This is a routine function for 
 def conda(env):
-    return f"source ~/miniconda3/etc/profile.d/conda.sh; conda activate {env}"
+    return f"source {config['conda_base']}/etc/profile.d/conda.sh; conda activate {config['conda_env']}"
 
 
 
@@ -89,8 +88,18 @@ t_update << \
 
 # Iterate over each line in config['input_list_file']
 for index, row in df.iterrows():
-    # if row["bath"] in batches_done:
-        #continue
+
+
+    print(f"Batch {index}: {row['batch']}", end = "")
+
+    if row["batch"] in batches_done:
+        print(f" marked done, ignoring.")
+        continue
+
+    print(' not done. Generating jobs:')
+    print()
+    print(f" path: {row['path']}")
+
 
     # Når disse format_specifiers opdateres, er det vigtigt at 
     if row["format_specifier"] == "formatA" or row["format_specifier"] == "formatB": 
@@ -106,9 +115,6 @@ for index, row in df.iterrows():
     batch_long = f"{row['batch']}" # e.g. 210108
 
     print()
-    print()
-    print()
-    print(f"Batch {index}: {row['batch']}, {row['path']}")
 
     batch_input_file = f"{input_base}/{row['batch']}.tab"
 
@@ -158,7 +164,7 @@ for index, row in df.iterrows():
         t_cat << \
             f"""
 
-            {conda("ivar-inpipe")}
+            {conda(config['conda_env'])}
             
 
             mkdir -p {t_cat.outputs['dir']}
@@ -196,7 +202,7 @@ for index, row in df.iterrows():
         t_map << \
             f"""
 
-            {conda("ivar-inpipe")} # TODO: remove bwa from pipe19_a
+            {conda(config['conda_env'])} # TODO: remove bwa from pipe19_a
 
             mkdir -p {t_map.outputs['dir']}
 
@@ -240,7 +246,7 @@ for index, row in df.iterrows():
             walltime = '03:00:00') << \
                 f"""
 
-                {conda("ivar-inpipe")}
+                {conda(config['conda_env'])}
 
                 mkdir -p {output_base}/{full_name}/consensus
 
