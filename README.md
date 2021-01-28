@@ -14,3 +14,15 @@ This pipeline accepts the demultiplexed data from this sequencing protocol and g
 * Call consensus with **iVar consensus** (read-depth >= 10, base-frequency >= 0.8).
 * Call lineage with **Pangolin**.
 * Call clade with **Nextclade**.
+
+
+**Dependencies:**
+* Singularity
+* Python 3.7
+  * yaml (pyyaml)
+  * pandas
+  * gwf (gwf-org)
+  
+  
+**Setup:**
+Use the config.yaml for setting the input/output directories
