@@ -6,12 +6,13 @@ import os
 import json
 
 import pandas as pd
+import yaml
 import subprocess, sys
 
 
 
 gwf = Workflow(defaults={
-    "mail_user": "kobel@pm.me",
+    #"mail_user": "kobel@pm.me",
     "mail_type": "FAIL",
     "account": "clinicalmicrobio",
     "memory": '1g',
@@ -36,20 +37,22 @@ print("""
 """
 
 
-#input_list_file = "input_list.tab"
-input_list_file = "/faststorage/project/ClinicalMicrobio/pipe19/input_list.tab"
-batches_done_file = "other/batches_done.tab"
-input_base = "input"
-output_base = "output"
+with open('config.yml') as file:
+    config = yaml.full_load(file)
+
+input_base = config['input_base']
+output_base = config['output_base']
 
 
-config = {'reference': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.reference.fasta",
-          'bed_file': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed",
-          'singularity_images': "~/faststorage/singularity_images"}
+# config = {'reference': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.reference.fasta",
+#           'bed_file': "artic-ncov2019/primer_schemes/SARS-CoV-2/V3/nCoV-2019.primer.bed",
+#           'singularity_images': "~/faststorage/singularity_images"}
 
 
-df = pd.read_table(input_list_file, sep="\t", names = ["batch", "path", "format_specifier"], comment = "#")
-batches_done = pd.read_table(batches_done_file, sep = "\t", names = ["batch"])
+
+
+df = pd.read_table(config['input_list_file'], sep="\t", names = ["batch", "path", "format_specifier"], comment = "#")
+batches_done = pd.read_table(config['batches_done_file'], sep = "\t", names = ["batch"])
 
 
 def conda(env):
@@ -64,7 +67,7 @@ print()
 
 # TODO: Solve the problem, that this job could theoretically run simultaneously with the nextclade/pangolin targets.
 t_update = gwf.target(f"update",
-    inputs = input_list_file,
+    inputs = config['input_list_file'],
     outputs = [f"other/classification_update_log.txt"])
 t_update << \
     f"""
@@ -84,7 +87,7 @@ t_update << \
 
 
 
-# Iterate over each line in input_list_file
+# Iterate over each line in config['input_list_file']
 for index, row in df.iterrows():
     # if row["bath"] in batches_done:
         #continue
@@ -233,7 +236,7 @@ for index, row in df.iterrows():
         t_consensus = gwf.target(f"_cons_{full_name_clean}",
             inputs = t_map.outputs['bam'],
             outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa",
-            memory = '8g',
+            memory = '16g',
             walltime = '03:00:00') << \
                 f"""
 
