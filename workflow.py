@@ -37,7 +37,7 @@ print("""
 """
 
 
-with open('config.yml') as file:
+with open('config_example.yml') as file:
     config = yaml.full_load(file)
 
 input_base = config['input_base']
