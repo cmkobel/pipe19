@@ -41,7 +41,7 @@ for index, input_file in enumerate(df):
     print()
 
 
-    target0 = gwf.target(f"b0_integrate_init_{prefix}",
+    target0 = gwf.target(f"b0_integ_init_{prefix}",
         inputs = input_file,
         outputs = [f"{output_base}/{prefix}/{prefix}_input.tab",
                    f"{output_base}/{prefix}/{prefix}_nextclade.tab",
@@ -83,7 +83,7 @@ for index, input_file in enumerate(df):
         """
 
 
-    target1 = gwf.target(f"b1_integrate_pt___{prefix}",
+    target1 = gwf.target(f"b1_integ_pt___{prefix}",
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
@@ -126,7 +126,7 @@ for index, input_file in enumerate(df):
 
 
     # Copy, compress, and later: upload
-    target2 = gwf.target(f"b2_gzip_________{prefix}",
+    target2 = gwf.target(f"b2_gzip_______{prefix}",
         inputs = target1.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_fasta_upload.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_raw_upload.tar.gz",
@@ -191,7 +191,7 @@ for index, input_file in enumerate(df):
 #print("batch_done_list", batch_done_list)
 
 
-target3 = gwf.target(f"b2_collect_all",
+target3 = gwf.target(f"b2_coll_all",
     inputs = batch_done_list,
     outputs = "all_batches_integrated.tsv")
 target3 << \
