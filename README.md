@@ -27,7 +27,10 @@ For each batch of samples, the following is done:
   * pandas
   * gwf (gwf-org)
 
+
 ## Setup
+
 Use config.yaml for setting the input/output directories and the like.
-make sure you install all dependencies listed in conda_env.yml. E.g. with the following command: `conda env create -f conda_env.yml`
+
+Make sure you install all dependencies listed in conda_env.yml. E.g. with the following command: `conda env create -f conda_env.yml`
   
