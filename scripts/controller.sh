@@ -3,7 +3,6 @@
 # Any subsequent(*) commands which fail will cause the shell script to exit immediately
 set -e
 
-# Ensure existence of the directory for logs.
 
 
 
@@ -12,8 +11,11 @@ log_dir="controller_log"
 main_log="main_log.txt"
 
 
+# Ensure existence of the directory for logs.
 mkdir -p $log_dir
 
+
+# Define routine functions
 function get_time() {
     echo $(date +%Y-%m-%dT%X)
 }
