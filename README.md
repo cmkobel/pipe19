@@ -21,7 +21,7 @@ For each batch of samples, the following is done:
 * Generation of a QC/surveillance report.
 
 **Dependencies:**
-* Singularity
+* Singularity (or a similar docker-compatible platform)
 * Python 3.7
   * yaml (pyyaml)
   * pandas
