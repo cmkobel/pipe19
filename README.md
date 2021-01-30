@@ -15,6 +15,10 @@ This pipeline accepts the demultiplexed data from this sequencing protocol and g
 * Call lineage with **Pangolin**.
 * Call clade with **Nextclade**.
 
+For each batch of samples, the following is done:
+* Integration of file metadata, pangolin and nextclade calls.
+* Compression of raw- and consensus data, tailored for upload.
+* Generation of a QC/surveillance report.
 
 **Dependencies:**
 * Singularity
@@ -22,7 +26,10 @@ This pipeline accepts the demultiplexed data from this sequencing protocol and g
   * yaml (pyyaml)
   * pandas
   * gwf (gwf-org)
-  
+
+For a complete list of dependencies (and their subdependants), see the conda_env.yml.
   
 **Setup:**
-Use the config.yaml for setting the input/output directories
+Use the config.yaml for setting the input/output directories and the like.
+make sure you install all dependencies listed in conda_env.yml. E.g. with the following command: `conda env create -f conda_env.yml`
+  
