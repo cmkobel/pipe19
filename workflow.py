@@ -44,7 +44,7 @@ input_base = config['input_base']
 output_base = config['output_base']
 
 
-
+print('si:', config['singularity_images'])
 
 # Read list of input paths
 df = pd.read_table(config['input_list_file'], sep="\t", names = ["batch", "path", "format_specifier"], comment = "#")
@@ -67,9 +67,14 @@ print()
 # TODO: Solve the problem, that this job could theoretically run simultaneously with the nextclade/pangolin targets.
 t_update = gwf.target(f"update",
     inputs = config['input_list_file'],
-    outputs = [f"other/classification_update_log.txt"])
+    outputs = [f"other/classification_update_log.txt"],
+    walltime = '02:00:00',
+    memory = '2g')
 t_update << \
     f"""
+
+    # Make sure the dirs exist
+    mkdir -p {config['singularity_images']} other input
 
     echo "pulling images ..."
     singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
@@ -81,6 +86,10 @@ t_update << \
     singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
     singularity run {config['singularity_images']}/tidyverse_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
 
+
+
+    # maybe instead call a script like this from the controller:
+    #bash scripts/update.sh {config['singularity_images']}
 
     """
 
