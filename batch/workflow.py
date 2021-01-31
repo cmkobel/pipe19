@@ -82,6 +82,19 @@ for index, input_file in enumerate(df):
 
         """
 
+    target0B = gwf.target(f"b0B_report____{prefix}",
+        inputs = target0.outputs,
+        outputs = f"{output_base}/{prefix}/{prefix}_qc_plates.pdf")
+    target0B << \
+        f"""
+
+        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+            Rscript scripts/batch_qc.r {target0B.inputs[3]} {prefix} {target0B.outputs} 
+            # Rscript args:                               1                    2                    3 
+
+
+        """
+
 
     target1 = gwf.target(f"b1_integ_pt___{prefix}",
         inputs = target0.outputs,

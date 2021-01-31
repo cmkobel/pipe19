@@ -24,7 +24,8 @@ function enlog() {
     echo "[$(get_time)] ${1}" | tee -a $main_log
 }
 
-
+# reset log
+echo "" > $main_log
 
 
 # This loop waits for a pipeline step to complete.
@@ -103,9 +104,9 @@ while true; do
 
         wait_for_jobs_to_complete $(get_time) && echo "yes" || echo "no"
 
-    else
+    else # stderr above is empty
         enlog "No jobs yet. Waiting ..."
-        echo && sleep 60
+        echo && sleep 3600
     fi
 
 
