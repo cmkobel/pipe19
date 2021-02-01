@@ -224,8 +224,8 @@ target3 << \
     
 
 
-    # add marc.nielsen@rm.dk
-    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html carkob@rm.dk <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
+
+    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html carkob@rm.dk marc.nielsen@rm.dk <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
 
 Se vedhæftede html-fil.
 
