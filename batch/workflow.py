@@ -206,12 +206,12 @@ for index, input_file in enumerate(df):
 
 target3 = gwf.target(f"b2_coll_all",
     inputs = batch_done_list,
-    outputs = "report_whatever")
+    outputs = "rmarkdown/seq_report.html")
 target3 << \
     f"""
-    singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/collect_batches.r {target2.outputs}
-
+    singularity run docker://marcmtk/sarscov2_seq_report \
+            render.r rmarkdown/seq_report.Rmd
+    
 
 
 
