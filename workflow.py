@@ -80,12 +80,13 @@ t_update << \
     singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
     singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
     singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse
+    singularity pull -F --dir {config['singularity_images']} docker://marcmtk/sarscov2_seq_report
 
     echo "updating version-list ..."
     singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
     singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
     singularity run {config['singularity_images']}/tidyverse_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
-
+    singularity run {config['singularity_images']}/sarscov2_seq_report_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
 
 
     # maybe instead call a script like this from the controller:
