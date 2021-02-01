@@ -49,7 +49,7 @@ library(paletteer)
 library(ggforce)
 library(naniar)
 
-illumina <- read_tsv("integrated.tsv") %>% 
+illumina <- read_tsv("../integrated.tsv") %>% 
   filter(batch != "batch",
          type == "sample")
 

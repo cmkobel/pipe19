@@ -20,13 +20,11 @@ output_base = "output"
 df = glob.glob(input_glob)
 
 
-print(df)
-print("//")
-print()
+
 
 batch_done_list = []
 
-
+batch_list = []
 
 #for index, row in df.iterrows():
 for index, input_file in enumerate(df):
@@ -35,6 +33,7 @@ for index, input_file in enumerate(df):
 
     #prefix = f"{row['batch'][0]}"
     prefix = input_file.split("/")[-1].split(".")[0]
+    batch_list.append(prefix)
     print(f"Batch {index}: {prefix}")
     # if row["bath"] in blacklist:
     #    continue
@@ -203,18 +202,52 @@ for index, input_file in enumerate(df):
 
 #print("batch_done_list", batch_done_list)
 
+bs = "\n"
 
-target3 = gwf.target(f"b2_coll_all",
+highest_batch_id = sorted(batch_list)[-1]
+
+
+target3 = gwf.target(f"b3_report",
     inputs = batch_done_list,
-    outputs = "rmarkdown/seq_report.html")
+    outputs = [f"rmarkdown/flags/sent_{highest_batch_id}.flag",
+               f"rmarkdown/old_reports/{highest_batch_id}_seq_report.html",],
+    memory = '2g')
 target3 << \
     f"""
+
+    # Make sure the old report is cleared if singularity fails without error.
+    rm -f rmarkdown/seq_report.html
+
+    # Generate report
     singularity run docker://marcmtk/sarscov2_seq_report \
-            render.r rmarkdown/seq_report.Rmd
+        render.r rmarkdown/seq_report.Rmd
     
 
 
+    # add marc.nielsen@rm.dk
+    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html carkob@rm.dk <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
 
+Se vedhæftede html-fil.
+
+
+__
+
+Klinisk Mikrobioinformatisk Enhed
+carkob@rm.dk
+Klinisk Mikrobiologi ▪ Region Midtjylland
+Aarhus Universitetshospital
+Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
+
+"
+
+    # Simple way of keeping track of whether each new version of the report has been sent.
+    mkdir -p rmarkdown/flags
+    touch {target3.outputs[0]} 
+
+
+    # Backup the reports
+    mkdir -p rmarkdown/old_reports
+    cp rmarkdown/seq_report.html {target3.outputs[1]}
 
     """
 

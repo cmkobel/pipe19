@@ -44,7 +44,6 @@ input_base = config['input_base']
 output_base = config['output_base']
 
 
-print('si:', config['singularity_images'])
 
 # Read list of input paths
 df = pd.read_table(config['input_list_file'], sep="\t", names = ["batch", "path", "format_specifier"], comment = "#")
@@ -67,7 +66,7 @@ print()
 # TODO: Solve the problem, that this job could theoretically run simultaneously with the nextclade/pangolin targets.
 t_update = gwf.target(f"update",
     inputs = config['input_list_file'],
-    outputs = [f"other/classification_update_log.txt"],
+    outputs = [f"other/classification_update_log.txte"],
     walltime = '02:00:00',
     memory = '2g')
 t_update << \
