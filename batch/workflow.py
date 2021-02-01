@@ -27,7 +27,7 @@ print()
 batch_done_list = []
 
 
-# Iterate over each line in input_list_file
+
 #for index, row in df.iterrows():
 for index, input_file in enumerate(df):
     row = pd.read_table(input_file, sep = "\t")
@@ -206,11 +206,15 @@ for index, input_file in enumerate(df):
 
 target3 = gwf.target(f"b2_coll_all",
     inputs = batch_done_list,
-    outputs = "all_batches_integrated.tsv")
+    outputs = "report_whatever")
 target3 << \
     f"""
     singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/collect_batches.r {target2.outputs}
+
+
+
+
 
     """
 
