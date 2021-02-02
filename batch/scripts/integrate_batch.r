@@ -26,15 +26,15 @@ file_sample_sheet_out = args[5]
 
 if (development_mode) {
     
-    batch = "210108"
+    batch = "210120"
     
     # Inputs
-    file_integrated_init = "output/210108/210108_integrated_init.tsv"
+    file_integrated_init = "output/210120/210120_integrated_init.tsv"
     file_mads = "mads/latest/*.csv"
     
     # Outputs
-    file_integrated_out = "output/210108/210108_integrated.tsv"
-    file_sample_sheet_out = "output/210108/210108_sample_sheet.tsv"
+    file_integrated_out = "output/210120/210120_integrated.tsv"
+    file_sample_sheet_out = "output/210120/210120_sample_sheet.tsv"
 }
 
 write("These are the args:", stderr())
@@ -115,7 +115,9 @@ df_integrated %>% write_tsv(file_integrated_out)
 ## Filter for samples only, and select/rename the columns of interest.
 # ”sample_id;cpr;sampling_date;kma_id;raw_filename;consensus_filename”.
 write(paste("writing sample sheet to", file_sample_sheet_out), stderr())
-df_sample_sheet = df_integrated %>% filter(type == "sample") %>% 
+df_sample_sheet = df_integrated %>%
+    filter(type == "sample") %>% 
+    filter(plate_negative_control_summary != "unsatisfactory") %>%  
     rowwise() %>% 
     mutate(kma_id = "6620320",
            raw_full_name = paste0(batch, ".", plate, ".", moma_serial, "_", raw_sample_name),

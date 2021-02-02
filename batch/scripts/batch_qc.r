@@ -52,7 +52,7 @@ integrated %>%
     
     mutate(type = if_else(type == "control/other", "neg. control", type)) %>% 
     
-    select(batch, raw_sample_name, type, totalMissing, rank_totalMissing) %>% 
+    select(batch, raw_sample_name, type, totalMissing, rank_totalMissing, plate_negative_control_summary) %>% 
     
     ggplot(aes(rank_totalMissing, totalMissing)) + 
     geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.3) +
@@ -60,7 +60,7 @@ integrated %>%
     
     geom_point(aes(color = type)) +
     
-    facet_grid(paste0(batch, "\n", plate)~., scales = "fixed") +
+    facet_grid(paste0(plate, "\n", plate_negative_control_summary)~., scales = "fixed") +
     
     
     xlim(1, 100) +
@@ -82,7 +82,7 @@ integrated %>%
     
     mutate(type = if_else(type == "control/other", "neg. control", type)) %>% 
     
-    select(batch, raw_sample_name, type, totalMissing, rank_totalMissing) %>% 
+    select(batch, raw_sample_name, type, totalMissing, rank_totalMissing, plate_negative_control_summary) %>% 
     
     ggplot(aes(rank_totalMissing, totalMissing)) + 
     geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.3) +
