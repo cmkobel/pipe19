@@ -32,8 +32,7 @@ if (devel_mode) {
 
 
 integrated = read_tsv(integrated_file) %>% 
-    filter(!str_detect(raw_sample_name, "^afd")) %>% 
-    filter(!str_detect(tolower(raw_sample_name), "^positiv")) %>%
+    filter(!str_detect(tolower(raw_sample_name), "positiv|^pos|^afd")) %>%
     #mutate(totalMissing = if_else((is.na(totalMissing) | totalMissing == "totalMissing"), 29903, as.double(totalMissing))) %>%
     mutate(totalMissing = if_else((is.na(totalMissing) | totalMissing == "totalMissing"), 29903, as.double(totalMissing))) %>%
     

@@ -93,7 +93,7 @@ df_integrated = df_integrated %>%
     # Intermediary debug view
     #select(batch, ya_sample_name, plate, type, totalMissing, totalMissing_interpreted) %>% View()
     
-    mutate(plate_negative_control_summary = if_else(type == "control/other" & !str_detect(raw_sample_name, "positiv|^pos") & (totalMissing_interpreted <= 29903/2),
+    mutate(plate_negative_control_summary = if_else(type == "control/other" & !str_detect(tolower(raw_sample_name), "positiv|^pos|^afd") & (totalMissing_interpreted <= 29903/2),
                                                     "unsatisfactory",
                                                     "satisfactory")) %>%
     
