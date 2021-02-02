@@ -22,7 +22,7 @@ out_p1 = args[3]
 
 if (devel_mode) {
     integrated_file = "~/GenomeDK/clinmicrocore/pipe19/batch/integrated_init.tsv"
-    arg_batch = 210126
+    arg_batch = 210120
     out_p1 = "writethefilehere.pdf"
     
 }
@@ -32,7 +32,9 @@ if (devel_mode) {
 integrated = read_tsv(integrated_file) %>% 
     filter(!str_detect(raw_sample_name, "^afd")) %>% 
     filter(!str_detect(tolower(raw_sample_name), "^positiv")) %>%
-    mutate(totalMissing = if_else(is.na(totalMissing), 29903, as.double(totalMissing))) %>% 
+    #mutate(totalMissing = if_else((is.na(totalMissing) | totalMissing == "totalMissing"), 29903, as.double(totalMissing))) %>%
+    mutate(totalMissing = if_else((is.na(totalMissing) | totalMissing == "totalMissing"), 29903, as.double(totalMissing))) %>%
+    
     filter(batch == arg_batch)
 
 
