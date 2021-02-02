@@ -17,7 +17,7 @@ output_base = "output"
 # TODO: Use the input files in ../input/* instead of the input_list.tab file. Using the latter means that the batch pipelin will run all over each time the input_list.tab file is touched.
 #df = pd.read_table(input_list_file, sep="\t", names = ["batch", "path", "method"], comment = "#")
 
-df = glob.glob(input_glob)
+df = sorted(glob.glob(input_glob))
 
 
 
@@ -40,7 +40,7 @@ for index, input_file in enumerate(df):
     print()
 
 
-    target0 = gwf.target(f"b0_integ_init_{prefix}",
+    target0 = gwf.target(f"int_init__{prefix}",
         inputs = input_file,
         outputs = [f"{output_base}/{prefix}/{prefix}_input.tab",
                    f"{output_base}/{prefix}/{prefix}_nextclade.tab",
@@ -81,7 +81,7 @@ for index, input_file in enumerate(df):
 
         """
 
-    target0B = gwf.target(f"b0B_report____{prefix}",
+    target0B = gwf.target(f"qc_report_{prefix}",
         inputs = target0.outputs,
         outputs = f"{output_base}/{prefix}/{prefix}_qc_plates.pdf")
     target0B << \
@@ -95,7 +95,7 @@ for index, input_file in enumerate(df):
         """
 
 
-    target1 = gwf.target(f"b1_integ_pt___{prefix}",
+    target1 = gwf.target(f"integ_pt__{prefix}",
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
@@ -138,7 +138,7 @@ for index, input_file in enumerate(df):
 
 
     # Copy, compress, and later: upload
-    target2 = gwf.target(f"b2_gzip_______{prefix}",
+    target2 = gwf.target(f"gzip______{prefix}",
         inputs = target1.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_fasta_upload.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_raw_upload.tar.gz",
