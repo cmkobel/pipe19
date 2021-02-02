@@ -22,17 +22,16 @@ file_integrated_out = args[5]
 
 
 if (development_mode) {
-    rm(list = ls())
     
-    batch = "210108"
+    batch = "210120"
     
     # Inputs
-    file_input = "output/210108/210108_input.tab"
-    file_nextclade = "output/210108/210108_nextclade.tab"
-    file_pangolin = "output/210108/210108_pangolin.csv"
+    file_input = "output/210120/210120_input.tab"
+    file_nextclade = "output/210120/210120_nextclade.tab"
+    file_pangolin = "output/210120/210120_pangolin.csv"
 
     # Outputs
-    file_integrated_out = "output/210108/210108_integrated_init.tsv"
+    file_integrated_out = "output/210120/210120_integrated_init.tsv"
 }
 
 write("These are the args:", stderr())
@@ -66,6 +65,9 @@ df_input = raw_input %>%
 
 
 
+df_pangolin = read_delim(file_pangolin, delim = ",", comment = "#", skip = 1,
+                         col_names = c("taxon", "lineage", "probability", "pangoLEARN_version", "status", "note", "raw_full_name"))
+
 
 
 
@@ -74,15 +76,40 @@ df_nextclade = read_tsv(file_nextclade, comment = "#", skip = 1,
                         col_names = c("raw_full_name", "seqName", "clade", "qc.overallScore", "qc.overallStatus", "totalGaps", "totalInsertions", "totalMissing", "totalMutations", "totalNonACGTNs", "totalPcrPrimerChanges", "substitutions", "deletions", "insertions", "missing", "nonACGTNs", "pcrPrimerChanges", "aaSubstitutions", "totalAminoacidSubstitutions", "aaDeletions", "totalAminoacidDeletions", "alignmentEnd", "alignmentScore", "alignmentStart", "qc.missingData.missingDataThreshold", "qc.missingData.score", "qc.missingData.status", "qc.missingData.totalMissing", "qc.mixedSites.mixedSitesThreshold", "qc.mixedSites.score", "qc.mixedSites.status", "qc.mixedSites.totalMixedSites", "qc.privateMutations.cutoff", "qc.privateMutations.excess", "qc.privateMutations.score", "qc.privateMutations.status", "qc.privateMutations.total", "qc.snpClusters.clusteredSNPs", "qc.snpClusters.score", "qc.snpClusters.status", "qc.snpClusters.totalSNPs", "errors"))
 
 
-df_pangolin = read_delim(file_pangolin, delim = ",", comment = "#", skip = 1,
-                         col_names = c("taxon", "lineage", "probability", "pangoLEARN_version", "status", "note", "raw_full_name"))
-
 
 
 
 # Join everything together
 df_integrated = left_join(df_input, df_pangolin, by = "raw_full_name") %>% 
-    left_join(df_nextclade, by = "raw_full_name")
+    left_join(df_nextclade, by = "raw_full_name") 
+
+
+# Mark each plate as passed or not
+df_integrated = df_integrated %>% 
+    group_by(plate) %>%
+    mutate(totalMissing_interpreted = if_else(is.na(totalMissing), 29903, totalMissing)) %>% 
+    
+    
+    # Intermediary debug view
+    #select(batch, ya_sample_name, plate, type, totalMissing, totalMissing_interpreted) %>% View()
+    
+    mutate(plate_negative_control_summary = if_else(type == "control/other" & !str_detect(raw_sample_name, "positiv|^pos") & (totalMissing_interpreted <= 29903/2),
+                                                    "unsatisfactory",
+                                                    "satisfactory")) %>%
+    
+    # Intermediary debug view
+    #select(batch, ya_sample_name, plate, type, totalMissing, plate_negative_control_summary) %>% View
+ 
+    mutate(plate_negative_control_summary = if_else(any("unsatisfactory" %in% unique(plate_negative_control_summary)),
+                                                    "unsatisfactory",
+                                                    "satisfactory")) #select(plate_negative_control_summary, everything()) %>%  View
+
+    # summarize(plate_negative_control_summary = if_else(any("unsatisfactory" %in% unique(plate_negative_control_summary)),
+    #                                           "unsatisfactory",
+    #                                           "satisfactory"))
+
+
+#df_integrated
 
 
 # Save the full table

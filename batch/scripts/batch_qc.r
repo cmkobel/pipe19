@@ -55,7 +55,7 @@ integrated %>%
     select(batch, raw_sample_name, type, totalMissing, rank_totalMissing) %>% 
     
     ggplot(aes(rank_totalMissing, totalMissing)) + 
-    geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.4) +
+    geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.3) +
     geom_line(color = "grey50") + 
     
     geom_point(aes(color = type)) +
@@ -65,7 +65,7 @@ integrated %>%
     
     xlim(1, 100) +
     ylim(-200, 29903+200) +
-    labs(#title = paste("Batch", arg_batch),
+    labs(title = paste("Batch", arg_batch),
          x = "samples ordered by missing bases",
          y = "missing bases",
          caption = "The blue line indicates coverage in half a SARS-CoV-2 genome.")
@@ -85,12 +85,12 @@ integrated %>%
     select(batch, raw_sample_name, type, totalMissing, rank_totalMissing) %>% 
     
     ggplot(aes(rank_totalMissing, totalMissing)) + 
-    geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.4) +
+    geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.3) +
     #geom_line(color = "grey50") + 
     
     geom_point(aes(color = type)) +
     
-    facet_grid(paste0(batch, "\n", plate)~., scales = "fixed") +
+    facet_grid(paste0(plate, "\n", plate_negative_control_summary)~., scales = "fixed") +
 
     
     scale_x_continuous(breaks = seq(0, 96, 8), minor_breaks = NULL)+
@@ -98,7 +98,7 @@ integrated %>%
 
 
     labs(title = paste("Batch", arg_batch),
-         x = "samples ordered by library-ID (moma_serial)",
+         x = "samples ordered by library ID (moma_serial)",
          y = "missing bases",
          caption = "The blue line indicates coverage in half a SARS-CoV-2 genome.")
 
