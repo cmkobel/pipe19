@@ -27,8 +27,7 @@ if (development_mode) {
     batch = "210108"
     
     # Inputs
-    file_input = "output/210108/210108_input.tab" 
-    #file_input = "../input/210108.tab"
+    file_input = "output/210108/210108_input.tab"
     file_nextclade = "output/210108/210108_nextclade.tab"
     file_pangolin = "output/210108/210108_pangolin.csv"
 
