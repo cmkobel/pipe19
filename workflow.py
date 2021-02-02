@@ -281,6 +281,10 @@ for index, row in df.iterrows():
                     --outdir {t_pangolin.outputs[0]}
 
 
+
+
+
+
             # Prefix header row with #, and end with header for full_name
             cat {t_pangolin.outputs[0]}/lineage_report.csv \
             | head -n 1 \
@@ -310,6 +314,7 @@ for index, row in df.iterrows():
 
             mkdir -p {t_nextclade.outputs['dir']}
 
+            # should always print header
             singularity run {config['singularity_images']}/nextclade_latest.sif \
                     nextclade.js \
                         --input-fasta {t_nextclade.inputs[0]} \
@@ -317,17 +322,15 @@ for index, row in df.iterrows():
 
             ./scripts/dos2unix {t_nextclade.outputs['tab']}.tmp
 
-            # Prefix header row with #, and end with header for full_name
-            cat {t_nextclade.outputs['tab']}.tmp \
-            | head -n 1 \
-            | awk '{{ print "#" $0 "\\tfull_name" }}' \
-            > {t_nextclade.outputs['tab']}
 
-            # End result row with full_name
+
+            echo "catting ..."
+            # Put full name in front of all columns, and remove the header row.
             cat {t_nextclade.outputs['tab']}.tmp \
-            | tail -n 1 \
-            | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' \
-            >> {t_nextclade.outputs['tab']}
+            | awk -v sam={full_name} '{{ print sam "\\t" $0 }}' \
+            | grep -vP "seqName\\tclade\\tqc.overallScore" \
+            > {t_nextclade.outputs['tab']} || echo -e "{full_name}" > {t_nextclade.outputs['tab']}
+            # Forcing graceful exit, because an empty file exits one.
 
 
             rm {t_nextclade.outputs['tab']}.tmp
@@ -344,5 +347,4 @@ for index, row in df.iterrows():
 
 
 
-print()
 print()
