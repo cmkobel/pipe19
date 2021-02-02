@@ -89,7 +89,7 @@ for index, input_file in enumerate(df):
 
         singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/batch_qc.r {target0B.inputs[3]} {prefix} {target0B.outputs} 
-            # Rscript args:                               1                    2                    3 
+            # Rscript args:                               1        2                  3 
 
 
         """

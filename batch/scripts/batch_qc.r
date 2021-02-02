@@ -32,7 +32,7 @@ if (devel_mode) {
 integrated = read_tsv(integrated_file) %>% 
     filter(!str_detect(raw_sample_name, "^afd")) %>% 
     filter(!str_detect(tolower(raw_sample_name), "^positiv")) %>%
-    mutate(totalMissing = if_else(is.na(totalMissing), 29903, totalMissing)) %>% 
+    mutate(totalMissing = if_else(is.na(totalMissing), 29903, as.double(totalMissing))) %>% 
     filter(batch == arg_batch)
 
 
