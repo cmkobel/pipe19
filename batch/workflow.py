@@ -37,7 +37,6 @@ for index, input_file in enumerate(df):
     print(f"Batch {index}: {prefix}")
     # if row["bath"] in blacklist:
     #    continue
-    print()
 
 
     target0 = gwf.target(f"int_init__{prefix}",
