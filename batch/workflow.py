@@ -39,7 +39,7 @@ for index, input_file in enumerate(df):
     #    continue
 
 
-    target0 = gwf.target(f"int_init__{prefix}",
+    target0 = gwf.target(f"init_{prefix}",
         inputs = input_file,
         outputs = [f"{output_base}/{prefix}/{prefix}_input.tab",
                    f"{output_base}/{prefix}/{prefix}_nextclade.tab",
@@ -80,7 +80,7 @@ for index, input_file in enumerate(df):
 
         """
 
-    target0B = gwf.target(f"qc_report_{prefix}",
+    target0B = gwf.target(f"rprt_{prefix}",
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_qc_plates_A.pdf",
                    f"{output_base}/{prefix}/{prefix}_qc_plates_B.pdf"])
@@ -95,7 +95,7 @@ for index, input_file in enumerate(df):
         """
 
 
-    target1 = gwf.target(f"integ_pt__{prefix}",
+    target1 = gwf.target(f"pt___{prefix}",
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
@@ -138,7 +138,7 @@ for index, input_file in enumerate(df):
 
 
     # Copy, compress, and later: upload
-    target2 = gwf.target(f"gzip______{prefix}",
+    target2 = gwf.target(f"gzip_{prefix}",
         inputs = target1.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_fasta_upload.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_raw_upload.tar.gz",
