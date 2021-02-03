@@ -95,7 +95,7 @@ for index, input_file in enumerate(df):
         """
 
 
-    target1 = gwf.target(f"pt___{prefix}",
+    target1 = gwf.target(f"pati_{prefix}",
         inputs = target0.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",

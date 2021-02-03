@@ -163,7 +163,7 @@ for index, row in df.iterrows():
 
 
         #print(" ", [batch_row['path'] + i for i in (batch_row['R1'] + batch_row['R2']).split(" ")]); exit()
-        t_cat = gwf.target(f"_cat__{full_name_clean}",
+        t_cat = gwf.target(f"cat__{full_name_clean}",
             inputs = {'forward': [batch_row['path'] + i for i in batch_row['R1'].split(" ")],
                       'reverse': [batch_row['path'] + i for i in batch_row['R2'].split(" ")]}, 
             outputs = {'dir': f"{output_base}/{full_name}/trimmed_reads/",
@@ -201,7 +201,7 @@ for index, row in df.iterrows():
 
        
         # Map 
-        t_map = gwf.target(f"_map__{full_name_clean}",
+        t_map = gwf.target(f"map__{full_name_clean}",
             inputs = t_cat.outputs['files'],
             outputs = {'dir': f"{output_base}/{full_name}/aligned",
                        'bam': f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"},
@@ -248,7 +248,7 @@ for index, row in df.iterrows():
 
         # Consensus
         # TODO: Parametrize
-        t_consensus = gwf.target(f"_cons_{full_name_clean}",
+        t_consensus = gwf.target(f"cons_{full_name_clean}",
             inputs = t_map.outputs['bam'],
             outputs = f"{output_base}/{full_name}/consensus/{full_name}.fa",
             memory = '16g',
@@ -265,7 +265,7 @@ for index, row in df.iterrows():
 
 
         # Pangolin 
-        t_pangolin = gwf.target(f"_pang_{full_name_clean}",
+        t_pangolin = gwf.target(f"pang_{full_name_clean}",
             inputs = [t_consensus.outputs],
             outputs = [f"{output_base}/{full_name}/pangolin",
                        f"{output_base}/{full_name}/pangolin/{full_name}_pangolin.csv"])
@@ -304,7 +304,7 @@ for index, row in df.iterrows():
 
 
         # Nextclade
-        t_nextclade = gwf.target(f"_next_{full_name_clean}",
+        t_nextclade = gwf.target(f"next_{full_name_clean}",
             inputs = [t_consensus.outputs],
             outputs = {'dir': f"{output_base}/{full_name}/nextclade",
                        'tab': f"{output_base}/{full_name}/nextclade/{full_name}_nextclade.tab"},
