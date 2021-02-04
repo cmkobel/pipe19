@@ -238,10 +238,14 @@ for index, row in df.iterrows():
             echo "trimming ..."
             ivar trim -e -i $renamed -b {config['bed_file']} -p $tmptrimmed -q 30
             rm $renamed 
+            rm ${{renamed}}.bai
 
             # Finally sort
             samtools sort -T {full_name}.trim -o {t_map.outputs['bam']} $tmptrimmed
+            samtools index {t_map.outputs['bam']}
             rm $tmptrimmed
+
+            
 
             """
 

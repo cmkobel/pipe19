@@ -55,8 +55,8 @@ df_input = raw_input %>%
           
     rowwise() %>% 
     mutate(ya_sample_name = if_else(type == "sample", # "year_agnostic_sample_name"
-                                         paste0(sample_name_prefix_converted, sample_name_suffix),
-                                         paste0(raw_sample_name))) %>% 
+                                    paste0(sample_name_prefix_converted, sample_name_suffix),
+                                    paste0(raw_sample_name))) %>% 
     ungroup() %>% 
 
 
