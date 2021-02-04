@@ -50,6 +50,7 @@ library(ggforce)
 library(naniar)
 
 illumina <- read_tsv("../integrated.tsv") %>% 
+#illumina = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>%
   filter(batch != "batch",
          type == "sample")
 
@@ -448,27 +449,28 @@ heatmap_df %>%
        caption = "Mutationer der optræder i 5 eller færre sekvenser, er IKKE inkluderet")
 ```
 
-# Ændringer i PCR primer sites
+
 
 ```{r pcr-primer-changes}
-ready %>% 
-  select(date, raw_full_name, pcrPrimerChanges) %>% 
-  separate_rows(pcrPrimerChanges, sep = ",") %>% 
-  filter(!is.na(pcrPrimerChanges)) %>% 
-  mutate(present = TRUE) %>% 
-  complete(nesting(date, raw_full_name), pcrPrimerChanges, fill = list(present = FALSE)) %>% 
-  select(raw_full_name, pcrPrimerChanges, present) %>% 
-  pivot_wider(id_cols = raw_full_name, names_from = pcrPrimerChanges, values_from = present) %>% 
-  select(-raw_full_name) %>% 
-  summarise(n = n(), across(everything(), sum)) %>% 
-  gather(pcrPrimerChange, count, -n) %>% 
-  arrange(desc(count)) %>% 
-  mutate(prop = count/n) %>% 
-  DT::datatable(filter = "top", rownames = FALSE, options = list(pageLength = 25),
-                caption = htmltools::tags$caption(
-                    style = 'caption-side: top; text-align: left;',
-                    table_counter(), 
-                    htmltools::strong("Ændringer i PCR primer sites")))
+# Ændringer i PCR primer sites
+# ready %>% 
+#   select(date, raw_full_name, pcrPrimerChanges) %>% 
+#   separate_rows(pcrPrimerChanges, sep = ",") %>% 
+#   filter(!is.na(pcrPrimerChanges)) %>% 
+#   mutate(present = TRUE) %>% 
+#   complete(nesting(date, raw_full_name), pcrPrimerChanges, fill = list(present = FALSE)) %>% 
+#   select(raw_full_name, pcrPrimerChanges, present) %>% 
+#   pivot_wider(id_cols = raw_full_name, names_from = pcrPrimerChanges, values_from = present) %>% 
+#   select(-raw_full_name) %>% 
+#   summarise(n = n(), across(everything(), sum)) %>% 
+#   gather(pcrPrimerChange, count, -n) %>% 
+#   arrange(desc(count)) %>% 
+#   mutate(prop = count/n) %>% 
+#   DT::datatable(filter = "top", rownames = FALSE, options = list(pageLength = 25),
+#                 caption = htmltools::tags$caption(
+#                     style = 'caption-side: top; text-align: left;',
+#                     table_counter(), 
+#                     htmltools::strong("Ændringer i PCR primer sites")))
 ```
 
 # Kvalitetskontrol
