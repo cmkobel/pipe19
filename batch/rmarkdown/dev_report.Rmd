@@ -43,14 +43,15 @@ Tabellerne vil mange steder indeholde automatisk beregnede proportions estimater
 Først indlæses Data, hjælpepakker til R og defineres funktioner til brug i analysen.
 
 ```{r setup, warning = FALSE, message = FALSE}
+library(stats)
 library(tidyverse)
 library(patchwork)
 library(paletteer)
 library(ggforce)
 library(naniar)
+library(here)
 
-#illumina <- read_tsv("../integrated.tsv") %>% 
-illumina = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>%
+illumina <- read_tsv(here("batch", "integrated.tsv")) %>% 
   filter(batch != "batch",
          type == "sample")
 
@@ -453,25 +454,35 @@ heatmap_df %>%
 
 ```{r pcr-primer-changes}
 # Ændringer i PCR primer sites
-# ready %>% 
-#   select(date, raw_full_name, pcrPrimerChanges) %>% 
-#   separate_rows(pcrPrimerChanges, sep = ",") %>% 
-#   filter(!is.na(pcrPrimerChanges)) %>% 
-#   mutate(present = TRUE) %>% 
-#   complete(nesting(date, raw_full_name), pcrPrimerChanges, fill = list(present = FALSE)) %>% 
-#   select(raw_full_name, pcrPrimerChanges, present) %>% 
-#   pivot_wider(id_cols = raw_full_name, names_from = pcrPrimerChanges, values_from = present) %>% 
-#   select(-raw_full_name) %>% 
-#   summarise(n = n(), across(everything(), sum)) %>% 
-#   gather(pcrPrimerChange, count, -n) %>% 
-#   arrange(desc(count)) %>% 
-#   mutate(prop = count/n) %>% 
-#   DT::datatable(filter = "top", rownames = FALSE, options = list(pageLength = 25),
-#                 caption = htmltools::tags$caption(
-#                     style = 'caption-side: top; text-align: left;',
-#                     table_counter(), 
-#                     htmltools::strong("Ændringer i PCR primer sites")))
+ready %>%
+  select(date, raw_full_name, pcrPrimerChanges) %>%
+  separate_rows(pcrPrimerChanges, sep = ",") %>%
+  filter(!is.na(pcrPrimerChanges)) %>%
+  mutate(present = TRUE) %>%
+  complete(nesting(date, raw_full_name), pcrPrimerChanges, fill = list(present = FALSE)) %>%
+  select(raw_full_name, pcrPrimerChanges, present) %>%
+  pivot_wider(id_cols = raw_full_name, names_from = pcrPrimerChanges, values_from = present) %>%
+  select(-raw_full_name) %>%
+  summarise(n = n(), across(everything(), sum)) %>%
+  gather(pcrPrimerChange, count, -n) %>%
+  arrange(desc(count)) %>%
+  mutate(prop = count/n) %>%
+  DT::datatable(filter = "top", rownames = FALSE, options = list(pageLength = 25),
+                caption = htmltools::tags$caption(
+                    style = 'caption-side: top; text-align: left;',
+                    table_counter(),
+                    htmltools::strong("Ændringer i PCR primer sites")))
 ```
+
+# Svartid
+
+```{r}
+ready %>% 
+  mutate(svartid = lubridate::ymd(batch) - modtaget) %>% 
+  ggplot(aes(svartid)) + 
+  geom_bar()
+```
+
 
 # Kvalitetskontrol
 
@@ -510,17 +521,34 @@ qc %>%
 
 
 ```{r qc-4}
-# Af en eller anden grund vil den her filter ikke køre fra genome.dk
-# Error in filter(., lowest_ct > 3) : object 'lowest_ct' not found
-# Endnu mere forvirrende er at qc-3 kører fint
-  # filter(qc, lowest_ct > 3) %>%
-  # ggplot(aes(lowest_ct, y = ..count.., fill = qc.overallStatus)) +
-  # geom_density(position = "fill", n = 1024) +
-  # scale_fill_paletteer_d("colorblindr::OkabeIto") +
-  # labs(x = "Ct",
-  #      y = "Proportion",
-  #      fill = "Kvalitet iflg. nextclade",
-  #      title = "Kvalitet af sekvens ifht. Ct")
+qc4_left <- qc %>%
+  filter(lowest_ct > 3) %>%
+  count(lowest_ct, qc.overallStatus) %>%
+  ggplot(aes(lowest_ct, n, fill = qc.overallStatus)) +
+  geom_col(position = "fill", colour = "white") +
+  scale_fill_paletteer_d("colorblindr::OkabeIto") +
+  scale_x_continuous(breaks = seq(10, 40, by = 5), minor_breaks = 10:40) +
+  coord_cartesian(xlim = c(10, 40)) +
+  theme_minimal() +
+  labs(x = "Ct",
+       y = "Proportion", 
+       fill = "Kvalitet iflg. nextclade",
+       title = "Kvalitet ifht. Ct")
+
+qc4_right <- qc %>%
+  filter(lowest_ct > 3) %>%
+  count(lowest_ct, qc.overallStatus) %>%
+  ggplot(aes(lowest_ct, n, fill = qc.overallStatus)) +
+  geom_col(colour = "white") +
+  scale_fill_paletteer_d("colorblindr::OkabeIto") +
+  scale_x_continuous(breaks = seq(10, 40, by = 5), minor_breaks = 10:40) +
+  coord_cartesian(xlim = c(10, 40)) +
+  theme_minimal() +
+  labs(x = "Ct",
+       y = "Count", 
+       fill = "Kvalitet iflg. nextclade")
+
+qc4_left + qc4_right + plot_layout(guides = "collect") & theme(legend.position = "bottom")
 ```
 
 
