@@ -1,0 +1,533 @@
+---
+title: "SARS-CoV-2 Sequence report KMA AUH"
+author: "Marc Trunjer Kusk Nielsen & Carl M. Kobel"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r global-options, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "100%", dev = c("svg", "png"),
+                      fig.path = "figure/")
+```
+
+
+# Introduktion
+
+Denne rapport opsummerer resultaterne af SARS-CoV-2 sekventeringen foretaget af Klinisk Mikrobiologi AUH i samarbejde med MOMA AUH.
+
+Temaer for rapporten:
+
+- Signaturmutationer og deres afledte sandsynlige lineage
+- Udvikling i Lineages og Clades
+- Delta-deletion (Δ69-70 i spike) og dens association til lineages, særligt de bekymrende varianter
+- Generel mutationsovervågning over tid
+- Ændringer i PCR primer sites
+- Kvalitetskontrol
+
+# Metode
+
+Positive SARS-CoV-2 prøver med en CT værdi under 32 sendes til sekventering. Der anvendes amplicon sekventering på Illumina platformen med qiagen kit.
+Basecalling foretages af MOMA
+Konsensus sekvenser dannes via ivar pipelinen.
+
+Generelt forsøger jeg at præsentere data først med en visualisering og dernæst med en tabel der kan slås op i. 
+Tabellerne vil mange steder indeholde automatisk beregnede proportions estimater `point_est` og tilhørende 95% binomial konfidensintervalsgrænser angivet som hhv. `lower`og `upper`.
+
+# Opsætning
+
+Først indlæses Data, hjælpepakker til R og defineres funktioner til brug i analysen.
+
+```{r setup, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(patchwork)
+library(paletteer)
+library(ggforce)
+library(naniar)
+
+#illumina <- read_tsv("../integrated.tsv") %>% 
+illumina = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>%
+  filter(batch != "batch",
+         type == "sample")
+
+sum_pos <- . %>% 
+  summarise(n = n()) %>% 
+  mutate(sum = sum(n)) %>% 
+  ungroup %>% 
+  mutate(binconf = map2(n, sum, ~ Hmisc::binconf(.x, .y) %>% as_tibble)) %>% 
+  unnest(binconf) %>% 
+  janitor::clean_names() 
+
+table_count <- 0
+table_counter <- function() {
+  table_count <<- table_count + 1
+  paste0("Tabel ", table_count, ". ")
+}
+
+sum_pos_table <- function(.data, fancy_caption = "", ...) {
+  .data %>% 
+    sum_pos %>% 
+    mutate(across(c(point_est, lower, upper), scales::percent_format(accuracy = 0.01))) %>% 
+    DT::datatable(rownames = FALSE, 
+                  filter = "top", 
+                  caption = htmltools::tags$caption(
+                    style = 'caption-side: top; text-align: left;',
+                    table_counter(), 
+                    htmltools::strong(fancy_caption)),
+                  options = list(pageLength = 25), 
+                  ...)
+}
+  
+is_mutant <- function(x) {
+  if(is.logical(x)) {
+    # if_else(x, "Mutant", "Wildtype", "Inconclusive") %>%
+    # factor(levels = c("Inconclusive", "Mutant", "Wildtype"))
+    fct_recode(as.character(x), "Mutant" = "TRUE", "Wildtype" = "FALSE") %>% 
+      fct_explicit_na("Inconclusive") %>% 
+      fct_expand("Wildtype", "Mutant", "Inconclusive")
+  } else {
+    x
+  }
+}
+
+`%not_in%` <- Negate(`%in%`)
+
+to_title <- function(name) {
+  if(str_detect(name, "[A-Z][0-9]{1,3}[A-Z]")) {
+    name
+  } else {
+    snakecase::to_title_case(name)
+  }
+}
+
+plot_stacked_area_by <- function(..., .data = ready) {
+  groups <- enquos(...)
+  
+  df <- .data %>% 
+  count(...) %>% 
+  complete(..., fill = list(n = 0)) %>% 
+  group_by(!!groups[[1]]) %>% 
+  mutate(prop = n / sum(n)) %>% 
+  ungroup 
+  
+  p1 <- df %>% 
+  ggplot(aes(!!groups[[1]], prop, fill = is_mutant(!!groups[[2]]))) +
+  geom_area(colour = "black", position = position_stack(reverse = TRUE)) +
+  scale_y_continuous("Proportion", labels = scales::percent_format()) +
+  labs(x = "", y = "Proportion", fill = to_title(as_label(groups[[2]]))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+  
+  p2 <- df %>% 
+  ggplot(aes(!!groups[[1]], n, fill = is_mutant(!!groups[[2]]))) +
+  geom_col(colour = "black", position = position_stack(reverse = TRUE)) +
+  labs(x = "", y = "Count", fill = to_title(as_label(groups[[2]]))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+  
+if(pull(ready, !!groups[[2]]) %>% is.logical) {
+    p1 <- p1 + scale_fill_manual(values = c("Wildtype" = "#76b5c5", "Mutant" = "#873e23", "Inconclusive" = "#cccccc"))
+    p2 <- p2 + scale_fill_manual(values = c("Wildtype" = "#76b5c5", "Mutant" = "#873e23", "Inconclusive" = "#cccccc"))
+  }
+  
+  p1 + p2 + plot_layout(guides = 'collect') & theme(legend.position = "bottom")
+}
+```
+
+Dernæst klargøres data til analyse.
+
+```{r ready, warning = FALSE}
+VOCs <- c("B.1.1.7", "B.1.351", "P.1")
+ready_step1 <- illumina %>% 
+  mutate(date  = coalesce(as.Date(modtaget), lubridate::ymd(substr(batch, 0, 6))),
+         week  = ISOweek::ISOweek(date),
+         epi_date_week  = ISOweek::ISOweek2date(paste0(week, "-1")),
+         epi_date_month = lubridate::floor_date(date, "month"),
+         missing_vector = map(missing, ~ eval(parse(text = paste("c(", gsub("\\-", ":", .x), ")")))) #https://r.789695.n4.nabble.com/convert-delimited-strings-with-ranges-to-numeric-td4673763.html
+  ) %>% 
+  filter(as.integer(totalMissing) < 3000,
+         date > lubridate::ymd("2020-12-01"))
+
+ready <- ready_step1 %>% 
+  mutate(D614G = str_detect(aaSubstitutions, "S:D614G"),
+         N439K = str_detect(aaSubstitutions, "S:N439K"),
+         N501Y = str_detect(aaSubstitutions, "S:N501Y"),
+         E484K = str_detect(aaSubstitutions, "S:E484K"),
+         Y453F = str_detect(aaSubstitutions, "S:Y453F"),
+         K417T = str_detect(aaSubstitutions, "S:K417T"),
+         P681H = str_detect(aaSubstitutions, "S:P681H"),
+         K417T = str_detect(aaSubstitutions, "S:K417T"),
+         del69_70 = str_detect(deletions, "21766-21772"), # NA giver problemer - gælder faktisk nok også for de andre, Inkonklusiv bør nok komme fra et qc felt eller et error felt
+         missing21766 = any(21766:21772 %in% missing_vector),
+         del69_70 = if_else((is.na(del69_70) | del69_70 == FALSE) & missing21766 == FALSE, FALSE, del69_70),
+         `B.1.1.7-like` = del69_70 & N501Y & P681H,
+         `B.1.351-like` = E484K & N501Y,
+         `P.1.1.28-like` = K417T & E484K & N501Y,
+         `mink-like` = Y453F & del69_70,
+         variants_of_concern = fct_expand(lineage, VOCs) %>% fct_other(keep = VOCs, other_level = "Not a VOC"),
+         common_lineages = fct_lump_n(lineage, n = 5),
+         focus_lineages  = fct_other(lineage, keep = c(levels(common_lineages), VOCs))
+         ) %>% 
+  rowwise() %>% 
+  mutate(lowest_ct = min(c_across(c(X16, X19, X22, X25, X28, X31, X34, X37, X40, X43, ct)), na.rm = TRUE),
+         lowest_ct = na_if(lowest_ct, Inf)) %>% 
+  ungroup()
+```
+
+# Lineage og Clade udvikling
+
+Først to figurer der viser udviklingen i Clade og lineage over tid. Bemærk at lineage definitionen er væsentligt mere fingrynet end clade definitionen.
+
+```{r lineage-clade-plots, warning = FALSE}
+plot_stacked_area_by(epi_date_week, clade)
+plot_stacked_area_by(epi_date_week, lineage)
+```
+
+```{r lineage-tables}
+ready %>% 
+  group_by(lineage) %>% 
+  sum_pos_table("Opsummering af lineages")
+
+ready %>% 
+  group_by(week, lineage) %>%
+  sum_pos_table("Lineages per uge")
+```
+
+
+```{r clade-tables}
+ready %>% 
+  group_by(clade) %>% 
+  sum_pos_table("Opsummering af clades")
+
+ready %>% 
+  group_by(week, clade) %>%
+  sum_pos_table("Clades per uge")
+```
+
+Lineage figuren bliver hurtigt svær at aflæse, derfor vises herunder de 5 hyppigste lineages og de specificerede bekymrings-varianter: `r print(VOCs)`
+
+```{r focus-lineages-plot-table, warning = FALSE}
+plot_stacked_area_by(epi_date_week, focus_lineages) & scale_fill_paletteer_d("colorblindr::OkabeIto")
+
+ready %>% 
+  group_by(week, focus_lineages) %>% 
+  sum_pos_table("Lineages der enten er hyppige eller bekymrende, opgjort per uge")
+```
+
+# Signaturmutationer og deres afledte lineages
+
+Herunder vises figurer for udvikling i signaturmutationer. 
+Signaturmutationerne giver afledte bud på lineages efter følgende skema.... [mangler]
+
+```{r signaturemutation-plots, warning = FALSE}
+plot_stacked_area_by(epi_date_week, D614G)
+plot_stacked_area_by(epi_date_week, N439K) 
+plot_stacked_area_by(epi_date_week, N501Y) 
+plot_stacked_area_by(epi_date_week, E484K) 
+plot_stacked_area_by(epi_date_week, Y453F)
+plot_stacked_area_by(epi_date_week, K417T)
+plot_stacked_area_by(epi_date_week, del69_70)
+plot_stacked_area_by(epi_date_week, `B.1.1.7-like`)
+plot_stacked_area_by(epi_date_week, `B.1.351-like`)
+plot_stacked_area_by(epi_date_week, `P.1.1.28-like`)
+plot_stacked_area_by(epi_date_week, `mink-like`)
+```
+
+Hvor hyppigt observerer vi de enkelte signaturmutationer? 
+Første tabel summerer over alle sekvenserne, anden tabel opgør hyppigheden per uge
+
+```{r signaturemutation-tables}
+ready %>% 
+  summarise(across(D614G:`mink-like`, mean, na.rm = TRUE)) %>% 
+  mutate(across(D614G:`mink-like`, scales::percent_format())) %>% 
+  DT::datatable(rownames = FALSE, 
+                caption = htmltools::tags$caption(
+                    style = 'caption-side: top; text-align: left;',
+                    table_counter(), 
+                    htmltools::strong("Hyppighed af signaturmutationer")))
+
+ready %>% 
+  group_by(week) %>% 
+  summarise(across(D614G:`mink-like`, mean, na.rm = TRUE)) %>% 
+  mutate(across(D614G:`mink-like`, scales::percent_format(accuracy = 1))) %>% 
+  DT::datatable(rownames = FALSE,
+                caption = htmltools::tags$caption(
+                    style = 'caption-side: top; text-align: left;',
+                    table_counter(), 
+                    htmltools::strong("Hyppighed af signaturmutationer, per uge")))
+```
+
+
+# Variants of Concern
+
+Herunder vises to figurer der fokuserer på udviklingen i bekymrings-varianter.
+Den første figur viser udviklingen i kontekst af alle sekvenser.
+Den anden figur viser udviklingen i kontekst af sekvenser med deletion69-70 i spike. Bemærk at for PANGO lineage B.1.1.7 kan der forekomme sekvenser der *ikke* har deletionen (og således vil være delta-PCR negative).
+
+```{r variants-of-concern-plots, warning = FALSE}
+plot_stacked_area_by(epi_date_week, variants_of_concern) & scale_fill_viridis_d(option = "magma")
+plot_stacked_area_by(.data = filter(ready, del69_70), epi_date_week, variants_of_concern) & scale_fill_viridis_d(option = "magma") & labs(title = "Kun sekvenser med deletion 69-70")
+```
+
+De to næste tabeller gengiver informationen fra de ovenstående figurer.
+
+```{r variants-of-concern-tables, warning = FALSE}
+ready %>% 
+  group_by(week, variants_of_concern) %>% 
+  sum_pos_table("Bekymrende varianter per uge")
+
+ready %>% 
+  filter(del69_70) %>% 
+  group_by(week, variants_of_concern) %>% 
+  sum_pos_table("Bekymrende varianter per uge, i sekvenser med deletion 69-70")
+```
+
+I de tre følgende tabeller opgøres hvor godt signaturmutationerne repræsenterer de egentlige lineages.
+
+```{r signaturemutations-versus-voc-tables, warning = FALSE}
+count(ready, lineage == "B.1.1.7", `B.1.1.7-like`)
+count(ready, lineage == "B.1.351", `B.1.351-like`)
+count(ready, lineage == "P.1.1.28", `P.1.1.28-like`)
+```
+
+```{r prøver-med-voc}
+# Her følger liste med prøvenumre der er positive for en af følgende lineages: `r print(VOCs)`
+# ready %>% 
+#   filter(variants_of_concern != "Not a VOC") %>% 
+#   select(cprnr, provenummer = ya_sample_name, lineage, probability, modtaget, pangoLEARN_version) %>% 
+#   DT::datatable(rownames = FALSE, options = list(pageLength = 10),
+#                 caption = htmltools::tags$caption(
+#                     style = 'caption-side: top; text-align: left;',
+#                     table_counter(), 
+#                     htmltools::strong("Patienter og prøver med bekymrende varianter")))
+```
+
+
+# Deletion 69-70 and association with lineages
+
+Tabeller for hver af de tre spørgsmål:
+Hvor mange sekvenser har spike deletionen 69-70?
+Hvor mange af de sekvenser der har spike deletionen tilhører B.1.1.7?
+Hvilke sekvenser tilhører de spike-deletions "positive"? (en tabel der fokuserer på proportioner på tværs af tid og en der fokuserer på rå tal per uge)
+
+```{r deletion-tables, warning = FALSE}
+count(ready, del69_70)
+
+ready %>% 
+  filter(del69_70) %>% 
+  group_by(week) %>% 
+  summarise(B.1.1.7 = sum(lineage == "B.1.1.7"), n = n())
+
+ready %>% 
+  filter(del69_70) %>% 
+  group_by(lineage) %>% 
+  sum_pos_table("Lineages, i sekvenser med deletion 69-70")
+
+ready %>% 
+  filter(del69_70) %>% 
+  select(week, lineage) %>% 
+  mutate(present = TRUE) %>% 
+  pivot_wider(names_from = lineage, values_from = present, values_fn = length, values_fill = 0) %>% 
+  rowwise() %>% 
+  mutate(sum_week = sum(c_across(-week))) %>% 
+  DT::datatable(rownames = FALSE,
+                caption = htmltools::tags$caption(
+                    style = 'caption-side: top; text-align: left;',
+                    table_counter(), 
+                    htmltools::strong("Antal af prøver med deletion 69-70, per uge og lineage")))
+```
+
+# Mutationsovervågning
+
+## Spike
+
+```{r mutations_long}
+mutations_long <- ready %>%
+  select(date, raw_full_name, aaSubstitutions) %>%
+  separate_rows(aaSubstitutions, sep = ",") %>%
+  filter(!is.na(aaSubstitutions)) %>%
+  group_by(aaSubstitutions) %>% 
+  filter(n() > 1) %>% 
+  ungroup %>% 
+  mutate(present = TRUE) %>%
+  complete(nesting(date, raw_full_name), aaSubstitutions, fill = list(present = FALSE))
+
+mutations_long %>%
+  filter(str_detect(aaSubstitutions, "S:")) %>% 
+  #filter(aaSubstitutions %in% c("S:D614G", "S:N439K")) %>%
+  mutate(present = as.integer(present)) %>%
+  ggplot(aes(x = date, y = present)) +
+  geom_hline(yintercept = c(0, 0.25, 0.5, 0.75, 1), linetype = "dashed", alpha = 0.5) +
+  stat_summary_bin(fun.min = function(x) NA_real_,
+                   fun = mean,
+                   fun.max = function(x) NA_real_, geom = "line") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  labs(x = "", 
+       y = "Proportion", 
+       title = "Hyppighed af Spike mutationer", 
+       caption = "Mutationer der kun optræder i én sekvens er IKKE inkluderet") +
+  facet_wrap(~aaSubstitutions) +
+  theme_void() +
+  theme(axis.text.y = element_text())
+```
+
+## Spike og øvrige gener
+
+Der medtages kun mutationer der optræder i mindst 5 sekvenser
+
+```{r mutatations-heatmap, dev = "png", fig.width=8}
+heatmap_df <- ready %>%
+  select(date, raw_full_name, aaSubstitutions) %>%
+  separate_rows(aaSubstitutions, sep = ",") %>% 
+  group_by(aaSubstitutions) %>% 
+  filter(n() > 5) %>% 
+  ungroup() %>% 
+  mutate(present = 1L) %>% 
+  complete(nesting(date, raw_full_name), aaSubstitutions, fill = list(present = 0L)) %>% 
+  #filter(str_detect(aaSubstitutions, "ORF1b:")) %>% 
+  left_join(select(ready, raw_full_name, epi_date_week, batch), by = "raw_full_name") %>% 
+  group_by(batch, aaSubstitutions) %>% 
+  summarise(n_with_substitution = sum(present),
+            n_in_batch = n()) %>% 
+  mutate(point_est = n_with_substitution / n_in_batch) %>% 
+  ungroup %>% 
+  janitor::clean_names() %>% 
+  mutate(aa_substitutions = fct_reorder(aa_substitutions, point_est),
+         batch = as.factor(lubridate::ymd(batch)),
+         gene = str_extract(aa_substitutions, "[^:]+"))
+  
+  
+heatmap_df %>% 
+  filter(gene %in% c("N", "S")) %>% 
+  ggplot(aes(aa_substitutions, batch, fill = point_est)) + 
+  geom_raster() + 
+  scale_fill_viridis_c(name   = "Proportion",
+                       option = "cividis",
+                       limits = c(0, 1),
+                       trans  = "sqrt") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + 
+  facet_col(~gene, scales = "free_x") +
+  labs(x = "",
+       y = "Batch", 
+       title = "Hyppighed af mutationer, per gen og batch",
+       caption = "Mutationer der optræder i 5 eller færre sekvenser, er IKKE inkluderet")
+
+heatmap_df %>% 
+  filter(gene %in% c("ORF1a", "ORF1b")) %>% 
+  ggplot(aes(aa_substitutions, batch, fill = point_est)) + 
+  geom_raster() + 
+  scale_fill_viridis_c(name   = "Proportion",
+                       option = "cividis", 
+                       trans  = "sqrt",
+                       limits = c(0, 1)) +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + 
+  facet_col(~gene, scales = "free_x") +
+  labs(x = "",
+       y = "Batch", 
+       title = "Hyppighed af mutationer, per gen og batch",
+       caption = "Mutationer der optræder i 5 eller færre sekvenser, er IKKE inkluderet")
+
+heatmap_df %>% 
+  filter(gene %in% c("E", "M", "ORF6", "ORF7a", "ORF7b", "ORF8", "ORF9a", "ORF9b")) %>% 
+  ggplot(aes(aa_substitutions, batch, fill = point_est)) + 
+  geom_raster() + 
+  scale_fill_viridis_c(name   = "Proportion",
+                       option = "cividis", 
+                       limits = c(0, 1),
+                       trans  = "sqrt") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(x = "",
+       y = "Batch", 
+       title = "Hyppighed af mutationer, per gen og batch",
+       caption = "Mutationer der optræder i 5 eller færre sekvenser, er IKKE inkluderet")
+```
+
+
+
+```{r pcr-primer-changes}
+# Ændringer i PCR primer sites
+# ready %>% 
+#   select(date, raw_full_name, pcrPrimerChanges) %>% 
+#   separate_rows(pcrPrimerChanges, sep = ",") %>% 
+#   filter(!is.na(pcrPrimerChanges)) %>% 
+#   mutate(present = TRUE) %>% 
+#   complete(nesting(date, raw_full_name), pcrPrimerChanges, fill = list(present = FALSE)) %>% 
+#   select(raw_full_name, pcrPrimerChanges, present) %>% 
+#   pivot_wider(id_cols = raw_full_name, names_from = pcrPrimerChanges, values_from = present) %>% 
+#   select(-raw_full_name) %>% 
+#   summarise(n = n(), across(everything(), sum)) %>% 
+#   gather(pcrPrimerChange, count, -n) %>% 
+#   arrange(desc(count)) %>% 
+#   mutate(prop = count/n) %>% 
+#   DT::datatable(filter = "top", rownames = FALSE, options = list(pageLength = 25),
+#                 caption = htmltools::tags$caption(
+#                     style = 'caption-side: top; text-align: left;',
+#                     table_counter(), 
+#                     htmltools::strong("Ændringer i PCR primer sites")))
+```
+
+# Kvalitetskontrol
+
+Sekvenser med manglende baser >= 3000: `r sum(as.integer(illumina$totalMissing) >= 3000, na.rm = TRUE)`
+
+```{r qc}
+qc <- illumina %>%
+  mutate(qc.overallStatus = factor(qc.overallStatus,
+                                   levels = c("bad", "mediocre", "good")),
+         ordered = TRUE) %>%
+  rowwise() %>%
+  mutate(lowest_ct = min(c_across(c(X16, X19, X22, X25, X28, X31, X34, X37, X40, X43, ct)), na.rm = TRUE),
+         lowest_ct = na_if(lowest_ct, Inf)) %>%
+  mutate_at(vars(lowest_ct, totalMissing), as.integer) %>%
+  ungroup()
+```
+
+
+```{r qc-2}
+qc %>% 
+  ggplot(aes(lowest_ct, totalMissing)) + 
+  geom_miss_point() +
+  labs(x = "Ct", y = "Manglende baser", colour = "Manglende data på variablen",
+       title = "Manglende baser ifht. Ct") +
+  theme(legend.position = "bottom")
+```
+
+
+```{r qc-3}
+qc %>% 
+  filter(lowest_ct > 3) %>% 
+  ggplot(aes(lowest_ct, totalMissing)) + 
+  stat_ecdf() + 
+  labs(x = "Ct", y = "Manglende baser", title = "Fordeling af totale manglende baser")
+```
+
+
+```{r qc-4}
+# Af en eller anden grund vil den her filter ikke køre fra genome.dk
+# Error in filter(., lowest_ct > 3) : object 'lowest_ct' not found
+# Endnu mere forvirrende er at qc-3 kører fint
+  # filter(qc, lowest_ct > 3) %>%
+  # ggplot(aes(lowest_ct, y = ..count.., fill = qc.overallStatus)) +
+  # geom_density(position = "fill", n = 1024) +
+  # scale_fill_paletteer_d("colorblindr::OkabeIto") +
+  # labs(x = "Ct",
+  #      y = "Proportion",
+  #      fill = "Kvalitet iflg. nextclade",
+  #      title = "Kvalitet af sekvens ifht. Ct")
+```
+
+
+```{r qc-5}
+ready %>% 
+  mutate_at(vars(lowest_ct, totalMissing), as.integer) %>% 
+  ggplot(aes(totalMissing, colour = `SARS2 Eurofins COV` == "Positiv")) + 
+  stat_ecdf()
+```
+
