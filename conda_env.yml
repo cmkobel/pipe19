@@ -68,6 +68,7 @@ dependencies:
   - numpy=1.19.5=py37haa41c4c_1
   - openjdk=11.0.8=hacce0ff_0
   - openssl=1.1.1i=h7f98852_0
+  - pandas
   - pcre=8.44=he1b5a44_0
   - perl=5.32.0=h36c2ea0_0
   - pigz=2.3.4=hed695b0_1

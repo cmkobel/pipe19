@@ -14,51 +14,13 @@ library(stats)
 library(tidyverse)
 library(here)
 
-illumina <- read_tsv(here("batch", "integrated.tsv")) %>% 
-  filter(batch != "batch",
-         type == "sample")
-
-VOCs <- c("B.1.1.7", "B.1.351", "P.1")
-ready_step1 <- illumina %>% 
-  mutate(date  = coalesce(as.Date(modtaget), lubridate::ymd(substr(batch, 0, 6))),
-         week  = ISOweek::ISOweek(date),
-         epi_date_week  = ISOweek::ISOweek2date(paste0(week, "-1")),
-         epi_date_month = lubridate::floor_date(date, "month"),
-         missing_vector = map(missing, ~ eval(parse(text = paste("c(", gsub("\\-", ":", .x), ")")))) #https://r.789695.n4.nabble.com/convert-delimited-strings-with-ranges-to-numeric-td4673763.html
-  ) %>% 
-  filter(as.integer(totalMissing) < 3000,
-         date > lubridate::ymd("2020-12-01"))
-
-ready <- ready_step1 %>% 
-  mutate(D614G = str_detect(aaSubstitutions, "S:D614G"),
-         N439K = str_detect(aaSubstitutions, "S:N439K"),
-         N501Y = str_detect(aaSubstitutions, "S:N501Y"),
-         E484K = str_detect(aaSubstitutions, "S:E484K"),
-         Y453F = str_detect(aaSubstitutions, "S:Y453F"),
-         K417T = str_detect(aaSubstitutions, "S:K417T"),
-         P681H = str_detect(aaSubstitutions, "S:P681H"),
-         K417T = str_detect(aaSubstitutions, "S:K417T"),
-         del69_70 = str_detect(deletions, "21766-21772"), # NA giver problemer - gælder faktisk nok også for de andre, Inkonklusiv bør nok komme fra et qc felt eller et error felt
-         missing21766 = any(21766:21772 %in% missing_vector),
-         del69_70 = if_else((is.na(del69_70) | del69_70 == FALSE) & missing21766 == FALSE, FALSE, del69_70),
-         `B.1.1.7-like` = del69_70 & N501Y & P681H,
-         `B.1.351-like` = E484K & N501Y,
-         `P.1.1.28-like` = K417T & E484K & N501Y,
-         `mink-like` = Y453F & del69_70,
-         variants_of_concern = fct_expand(lineage, VOCs) %>% fct_other(keep = VOCs, other_level = "Not a VOC"),
-         common_lineages = fct_lump_n(lineage, n = 5),
-         focus_lineages  = fct_other(lineage, keep = c(levels(common_lineages), VOCs))
-         ) %>% 
-  rowwise() %>% 
-  mutate(lowest_ct = min(c_across(c(X16, X19, X22, X25, X28, X31, X34, X37, X40, X43, ct)), na.rm = TRUE),
-         lowest_ct = na_if(lowest_ct, Inf)) %>% 
-  ungroup()
+ready <- readRDS(here("batch", "ready.RDS"))
 ```
 
 
 # VOC liste
 
-De bekymrende varianter der ledes efter er: **`r VOCs`**.
+De bekymrende varianter der ledes efter er: **`r levels(ready$variants_of_concern)[-length(levels(ready$variants_of_concern))]`**.
 
 Den følgende tabel oplister de prøver og personer som har en variant of concern baseret på helgenomsekvensering og pangolin. En prøve optræder kun i tabellen hvis den har et præcist match til en af de ovenfor nævnte varianter. Det er derfor vigtigt at listen holdes opdateret.
 

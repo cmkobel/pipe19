@@ -194,6 +194,10 @@ ready <- ready_step1 %>%
   ungroup()
 ```
 
+```{r save-ready, warning = FALSE}
+saveRDS(ready, file = here("batch", "ready.RDS"))
+```
+
 # Lineage og Clade udvikling
 
 Først to figurer der viser udviklingen i Clade og lineage over tid. Bemærk at lineage definitionen er væsentligt mere fingrynet end clade definitionen.

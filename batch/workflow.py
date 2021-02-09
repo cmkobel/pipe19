@@ -207,7 +207,6 @@ bs = "\n"
 highest_batch_id = sorted(batch_list)[-1]
 mail_list = open("mail_list.txt", "r").read()
 
-
 target3 = gwf.target(f"b3_report",
     inputs = batch_done_list,
     outputs = [f"rmarkdown/flags/sent_{highest_batch_id}.flag",
@@ -218,6 +217,7 @@ target3 << \
 
     # Make sure the old report is cleared if singularity fails without error.
     rm -f rmarkdown/seq_report.html
+    rm -f ready.RDS
 
     # Generate report
     singularity run docker://marcmtk/sarscov2_seq_report \
