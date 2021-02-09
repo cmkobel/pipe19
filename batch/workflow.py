@@ -205,6 +205,7 @@ for index, input_file in enumerate(df):
 bs = "\n"
 
 highest_batch_id = sorted(batch_list)[-1]
+mail_list = open("mail_list.txt", "r").read()
 
 
 target3 = gwf.target(f"b3_report",
@@ -224,8 +225,8 @@ target3 << \
     
 
 
-    #marc.nielsen@rm.dk
-    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html carkob@rm.dk  <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
+    #    marc.nielsen@rm.dk
+    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html {mail_list} <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
 
 Se vedhæftede html-fil.
 
@@ -251,3 +252,19 @@ Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
 
     """
 
+target4 = gwf.target(f"b4_voc_list",
+    inputs = f"rmarkdown/flags/sent_{highest_batch_id}.flag",
+    outputs = f"rmarkdown/old_reports/{highest_batch_id}_voc_list.html",
+    memory = '2g')
+target4 << f"""
+    # Make sure the old report is cleared if singularity fails without error.
+    rm -f rmarkdown/voc_list.html
+
+    # Generate report
+    singularity run docker://marcmtk/sarscov2_seq_report \
+        render.r rmarkdown/voc_list.Rmd
+        
+    # Backup the reports
+    mkdir -p rmarkdown/old_reports
+    cp rmarkdown/voc_list.html {target4.outputs}
+    """
