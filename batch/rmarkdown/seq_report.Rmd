@@ -6,6 +6,7 @@ output:
   html_document:
     code_folding: hide
     toc: true
+    toc_float: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -24,23 +25,29 @@ Temaer for rapporten:
 
 - Signaturmutationer og deres afledte sandsynlige lineage
 - Udvikling i Lineages og Clades
-- Delta-deletion (Δ69-70 i spike) og dens association til lineages, særligt de bekymrende varianter
+- "Delta"-mutation (Δ69-70 i spike) og dens association til lineages, særligt de bekymrende varianter
 - Generel mutationsovervågning over tid
+- Svartid
 - Ændringer i PCR primer sites
 - Kvalitetskontrol
+
+I rapporten anvendes udtrykket 'VOC', det står for Variant of concern, i danske medier omtales de ofte blot som 'Varianter'.
+
+Ugeangivelserne i teksten er ISO uger, som defineret i [ISO 8601](https://en.wikipedia.org/wiki/ISO_week_date). I 2021 medfører det at den første dag i isouge 1 (2021-W01-01) er torsdag 4. januar.
+
 
 # Metode
 
 Positive SARS-CoV-2 prøver med en CT værdi under 32 sendes til sekventering. Der anvendes amplicon sekventering på Illumina platformen med qiagen kit.
-Basecalling foretages af MOMA
-Konsensus sekvenser dannes via ivar pipelinen.
 
-Generelt forsøger jeg at præsentere data først med en visualisering og dernæst med en tabel der kan slås op i. 
+Basecalling foretages af MOMA. Konsensus sekvenser dannes via [ivar](https://github.com/andersen-lab/ivar) pipelinen. Kildekoden til KMA AUH's pipeline (inklusiv denne rapport) er tilgængelig på [github](https://github.com/cmkobel/pipe19).
+
+Generelt forsøger vi at præsentere data med en visualisering og dernæst med en tabel der kan slås op i. 
 Tabellerne vil mange steder indeholde automatisk beregnede proportions estimater `point_est` og tilhørende 95% binomial konfidensintervalsgrænser angivet som hhv. `lower`og `upper`.
 
 # Opsætning
 
-Først indlæses Data, hjælpepakker til R og defineres funktioner til brug i analysen.
+Først indlæses hjælpepakker til R og funktioner defineres til brug i analysen.
 
 ```{r setup, warning = FALSE, message = FALSE}
 library(stats)
@@ -50,10 +57,7 @@ library(paletteer)
 library(ggforce)
 library(naniar)
 library(here)
-
-illumina <- read_tsv(here("batch", "integrated.tsv")) %>% 
-  filter(batch != "batch",
-         type == "sample")
+theme_set(theme_minimal())
 
 sum_pos <- . %>% 
   summarise(n = n()) %>% 
@@ -69,16 +73,20 @@ table_counter <- function() {
   paste0("Tabel ", table_count, ". ")
 }
 
+make_fancy_caption <- function(fancy_caption = "") {
+  htmltools::tags$caption(
+                    style = 'caption-side: top; text-align: left;',
+                    table_counter(), 
+                    htmltools::strong(fancy_caption))
+}
+
 sum_pos_table <- function(.data, fancy_caption = "", ...) {
   .data %>% 
     sum_pos %>% 
     mutate(across(c(point_est, lower, upper), scales::percent_format(accuracy = 0.01))) %>% 
     DT::datatable(rownames = FALSE, 
                   filter = "top", 
-                  caption = htmltools::tags$caption(
-                    style = 'caption-side: top; text-align: left;',
-                    table_counter(), 
-                    htmltools::strong(fancy_caption)),
+                  caption = make_fancy_caption(fancy_caption),
                   options = list(pageLength = 25), 
                   ...)
 }
@@ -126,7 +134,7 @@ plot_stacked_area_by <- function(..., .data = ready) {
   p2 <- df %>% 
   ggplot(aes(!!groups[[1]], n, fill = is_mutant(!!groups[[2]]))) +
   geom_col(colour = "black", position = position_stack(reverse = TRUE)) +
-  labs(x = "", y = "Count", fill = to_title(as_label(groups[[2]]))) +
+  labs(x = "", y = "Antal", fill = to_title(as_label(groups[[2]]))) +
   theme_minimal() +
   theme(legend.position = "bottom")
   
@@ -139,10 +147,17 @@ if(pull(ready, !!groups[[2]]) %>% is.logical) {
 }
 ```
 
-Dernæst klargøres data til analyse.
+Dernæst indlæses og klargøres data til analyse.
+
+```{r illumina, warning = FALSE}
+illumina <- read_tsv(here("batch", "integrated.tsv")) %>% 
+  filter(batch != "batch",
+         type == "sample")
+```
 
 ```{r ready, warning = FALSE}
 VOCs <- c("B.1.1.7", "B.1.351", "P.1")
+
 ready_step1 <- illumina %>% 
   mutate(date  = coalesce(as.Date(modtaget), lubridate::ymd(substr(batch, 0, 6))),
          week  = ISOweek::ISOweek(date),
@@ -179,6 +194,10 @@ ready <- ready_step1 %>%
   ungroup()
 ```
 
+```{r save-ready, warning = FALSE}
+saveRDS(ready, file = here("batch", "ready.RDS"))
+```
+
 # Lineage og Clade udvikling
 
 Først to figurer der viser udviklingen i Clade og lineage over tid. Bemærk at lineage definitionen er væsentligt mere fingrynet end clade definitionen.
@@ -209,7 +228,7 @@ ready %>%
   sum_pos_table("Clades per uge")
 ```
 
-Lineage figuren bliver hurtigt svær at aflæse, derfor vises herunder de 5 hyppigste lineages og de specificerede bekymrings-varianter: `r print(VOCs)`
+Lineage figuren bliver hurtigt svær at aflæse, derfor vises herunder de 5 hyppigste lineages og de specificerede bekymrende varianter: `r VOCs`
 
 ```{r focus-lineages-plot-table, warning = FALSE}
 plot_stacked_area_by(epi_date_week, focus_lineages) & scale_fill_paletteer_d("colorblindr::OkabeIto")
@@ -246,20 +265,14 @@ ready %>%
   summarise(across(D614G:`mink-like`, mean, na.rm = TRUE)) %>% 
   mutate(across(D614G:`mink-like`, scales::percent_format())) %>% 
   DT::datatable(rownames = FALSE, 
-                caption = htmltools::tags$caption(
-                    style = 'caption-side: top; text-align: left;',
-                    table_counter(), 
-                    htmltools::strong("Hyppighed af signaturmutationer")))
+                caption = make_fancy_caption("Hyppighed af signaturmutationer"))
 
 ready %>% 
   group_by(week) %>% 
   summarise(across(D614G:`mink-like`, mean, na.rm = TRUE)) %>% 
   mutate(across(D614G:`mink-like`, scales::percent_format(accuracy = 1))) %>% 
   DT::datatable(rownames = FALSE,
-                caption = htmltools::tags$caption(
-                    style = 'caption-side: top; text-align: left;',
-                    table_counter(), 
-                    htmltools::strong("Hyppighed af signaturmutationer, per uge")))
+                caption = make_fancy_caption("Hyppighed af signaturmutationer, per uge"))
 ```
 
 
@@ -295,19 +308,6 @@ count(ready, lineage == "B.1.351", `B.1.351-like`)
 count(ready, lineage == "P.1.1.28", `P.1.1.28-like`)
 ```
 
-```{r prøver-med-voc}
-# Her følger liste med prøvenumre der er positive for en af følgende lineages: `r print(VOCs)`
-# ready %>% 
-#   filter(variants_of_concern != "Not a VOC") %>% 
-#   select(cprnr, provenummer = ya_sample_name, lineage, probability, modtaget, pangoLEARN_version) %>% 
-#   DT::datatable(rownames = FALSE, options = list(pageLength = 10),
-#                 caption = htmltools::tags$caption(
-#                     style = 'caption-side: top; text-align: left;',
-#                     table_counter(), 
-#                     htmltools::strong("Patienter og prøver med bekymrende varianter")))
-```
-
-
 # Deletion 69-70 and association with lineages
 
 Tabeller for hver af de tre spørgsmål:
@@ -336,10 +336,7 @@ ready %>%
   rowwise() %>% 
   mutate(sum_week = sum(c_across(-week))) %>% 
   DT::datatable(rownames = FALSE,
-                caption = htmltools::tags$caption(
-                    style = 'caption-side: top; text-align: left;',
-                    table_counter(), 
-                    htmltools::strong("Antal af prøver med deletion 69-70, per uge og lineage")))
+                caption = make_fancy_caption("Antal af prøver med deletion 69-70, per uge og lineage"))
 ```
 
 # Mutationsovervågning
@@ -359,7 +356,6 @@ mutations_long <- ready %>%
 
 mutations_long %>%
   filter(str_detect(aaSubstitutions, "S:")) %>% 
-  #filter(aaSubstitutions %in% c("S:D614G", "S:N439K")) %>%
   mutate(present = as.integer(present)) %>%
   ggplot(aes(x = date, y = present)) +
   geom_hline(yintercept = c(0, 0.25, 0.5, 0.75, 1), linetype = "dashed", alpha = 0.5) +
@@ -389,7 +385,6 @@ heatmap_df <- ready %>%
   ungroup() %>% 
   mutate(present = 1L) %>% 
   complete(nesting(date, raw_full_name), aaSubstitutions, fill = list(present = 0L)) %>% 
-  #filter(str_detect(aaSubstitutions, "ORF1b:")) %>% 
   left_join(select(ready, raw_full_name, epi_date_week, batch), by = "raw_full_name") %>% 
   group_by(batch, aaSubstitutions) %>% 
   summarise(n_with_substitution = sum(present),
@@ -450,10 +445,9 @@ heatmap_df %>%
        caption = "Mutationer der optræder i 5 eller færre sekvenser, er IKKE inkluderet")
 ```
 
-
+# Ændringer i PCR primer sites
 
 ```{r pcr-primer-changes}
-# Ændringer i PCR primer sites
 ready %>%
   select(date, raw_full_name, pcrPrimerChanges) %>%
   separate_rows(pcrPrimerChanges, sep = ",") %>%
@@ -468,19 +462,29 @@ ready %>%
   arrange(desc(count)) %>%
   mutate(prop = count/n) %>%
   DT::datatable(filter = "top", rownames = FALSE, options = list(pageLength = 25),
-                caption = htmltools::tags$caption(
-                    style = 'caption-side: top; text-align: left;',
-                    table_counter(),
-                    htmltools::strong("Ændringer i PCR primer sites")))
+                caption = make_fancy_caption("Ændringer i PCR primer sites"))
 ```
 
 # Svartid
 
 ```{r}
-ready %>% 
-  mutate(svartid = lubridate::ymd(batch) - modtaget) %>% 
+svartid <- ready %>% 
+  mutate(svartid = lubridate::ymd(batch) - modtaget + 1) 
+
+svartid_stats <- svartid %>% 
+  summarise(median_svartid = median(svartid, na.rm = TRUE),
+            count_at_median = table(svartid)[as.character(median_svartid)])
+
+svartid %>% 
   ggplot(aes(svartid)) + 
-  geom_bar()
+  geom_bar() +  
+  geom_point(data = svartid_stats, aes(median_svartid, count_at_median), colour = "royalblue4") + 
+  geom_text(data = svartid_stats, aes(median_svartid, count_at_median * 1.03, label = "Median"), colour = "royalblue4") +
+  scale_x_continuous(breaks = seq(0, 50, by = 10), minor_breaks = seq(0, 50, by = 2)) + 
+  theme_minimal() + 
+  labs(x = "Dage fra prøvemodtagelse til sekvens",
+       y = "Antal",
+       title = "Svartid")
 ```
 
 
@@ -545,7 +549,7 @@ qc4_right <- qc %>%
   coord_cartesian(xlim = c(10, 40)) +
   theme_minimal() +
   labs(x = "Ct",
-       y = "Count", 
+       y = "Antal", 
        fill = "Kvalitet iflg. nextclade")
 
 qc4_left + qc4_right + plot_layout(guides = "collect") & theme(legend.position = "bottom")
