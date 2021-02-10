@@ -5,7 +5,7 @@
 
 library(tidyverse)
 development_mode = F
-# setwd("~/GenomeDK/clinmicrocore/pipe19/batch"); development_mode = T
+# rm(list = ls()); setwd("~/GenomeDK/clinmicrocore/pipe19/batch"); development_mode = T
 
 
 
@@ -23,15 +23,15 @@ file_integrated_out = args[5]
 
 if (development_mode) {
     
-    batch = "210120"
+    batch = "201215"
     
     # Inputs
-    file_input = "output/210120/210120_input.tab"
-    file_nextclade = "output/210120/210120_nextclade.tab"
-    file_pangolin = "output/210120/210120_pangolin.csv"
+    file_input = "output/201215/201215_input.tab"
+    file_nextclade = "output/201215/201215_nextclade.tab"
+    file_pangolin = "output/201215/201215_pangolin.csv"
 
     # Outputs
-    file_integrated_out = "output/210120/210120_integrated_init.tsv"
+    file_integrated_out = "output/201215/201215_integrated_init.tsv"
 }
 
 write("These are the args:", stderr())
@@ -72,7 +72,7 @@ df_pangolin = read_delim(file_pangolin, delim = ",", comment = "#", skip = 1,
 
 
 write("importing nextclade ...", stderr())
-df_nextclade = read_tsv(file_nextclade, comment = "#", skip = 1,
+df_nextclade = read_tsv(file_nextclade, comment = "#", skip = 0,
                         col_names = c("raw_full_name", "seqName", "clade", "qc.overallScore", "qc.overallStatus", "totalGaps", "totalInsertions", "totalMissing", "totalMutations", "totalNonACGTNs", "totalPcrPrimerChanges", "substitutions", "deletions", "insertions", "missing", "nonACGTNs", "pcrPrimerChanges", "aaSubstitutions", "totalAminoacidSubstitutions", "aaDeletions", "totalAminoacidDeletions", "alignmentEnd", "alignmentScore", "alignmentStart", "qc.missingData.missingDataThreshold", "qc.missingData.score", "qc.missingData.status", "qc.missingData.totalMissing", "qc.mixedSites.mixedSitesThreshold", "qc.mixedSites.score", "qc.mixedSites.status", "qc.mixedSites.totalMixedSites", "qc.privateMutations.cutoff", "qc.privateMutations.excess", "qc.privateMutations.score", "qc.privateMutations.status", "qc.privateMutations.total", "qc.snpClusters.clusteredSNPs", "qc.snpClusters.score", "qc.snpClusters.status", "qc.snpClusters.totalSNPs", "errors"))
 
 
