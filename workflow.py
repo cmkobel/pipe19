@@ -52,6 +52,10 @@ df = pd.read_table(config['input_list_file'], sep="\t", names = ["batch", "path"
 batches_done = pd.read_table(config['batches_done_file'], sep = "\t", names = ["batch"])['batch'].tolist()
 
 
+# Prints a nice ending for each joblog.
+default_end = f"""echo; echo JOBID $SLURM_JOBID; jobinfo $SLURM_JOBID; echo OK"""
+
+
 # This is a routine function for 
 def conda(env):
     return f"source {config['conda_base']}/etc/profile.d/conda.sh; conda activate {config['conda_env']}"
@@ -64,34 +68,6 @@ print("//")
 print()
 
 # TODO: Solve the problem, that this job could theoretically run simultaneously with the nextclade/pangolin targets.
-t_update = gwf.target(f"update",
-    inputs = config['input_list_file'],
-    outputs = [f"other/classification_update_log.txte"],
-    walltime = '02:00:00',
-    memory = '2g')
-t_update << \
-    f"""
-
-    # Make sure the dirs exist
-    mkdir -p {config['singularity_images']} other input
-
-    echo "pulling images ..."
-    singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
-    singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
-    singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse
-    singularity pull -F --dir {config['singularity_images']} docker://marcmtk/sarscov2_seq_report
-
-    echo "updating version-list ..."
-    singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
-    singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
-    singularity run {config['singularity_images']}/tidyverse_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
-    singularity run {config['singularity_images']}/sarscov2_seq_report_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> {t_update.outputs[0]}
-
-
-    # maybe instead call a script like this from the controller:
-    #bash scripts/update.sh {config['singularity_images']}
-
-    """
 
 
 
@@ -141,7 +117,7 @@ for index, row in df.iterrows():
 
 
     # Now the batch_input_file file has surely been written, and we can start the actual pipeline
-    batch_df = pd.read_table(batch_input_file, sep = "\t")
+    batch_df = pd.read_table(batch_input_file, sep = "\t", dtype = str)
 
     print()
     print(batch_df)
@@ -197,6 +173,8 @@ for index, row in df.iterrows():
             # rm $tmp_reverse
 
 
+            {default_end}
+
             """
 
        
@@ -246,7 +224,7 @@ for index, row in df.iterrows():
             rm $tmptrimmed
 
             
-
+            {default_end}
             """
 
 
@@ -265,6 +243,8 @@ for index, row in df.iterrows():
 
                 samtools mpileup -A -Q 0 -d 0 {output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam | ivar consensus -q 30 -t 0.8 -p {output_base}/{full_name}/consensus/{full_name}.fa -m 10 -n N
 
+
+                {default_end}
                 """
 
 
@@ -281,7 +261,6 @@ for index, row in df.iterrows():
 
             singularity run {config['singularity_images']}/pangolin_latest.sif \
                 pangolin {t_pangolin.inputs[0]} \
-                    --threads 1 \
                     --outdir {t_pangolin.outputs[0]}
 
 
@@ -303,6 +282,9 @@ for index, row in df.iterrows():
 
 
             rm {t_pangolin.outputs[0]}/lineage_report.csv
+
+
+            {default_end}
 
             """
 
@@ -338,6 +320,8 @@ for index, row in df.iterrows():
 
 
             rm {t_nextclade.outputs['tab']}.tmp
+
+            {default_end}
 
             """
 
