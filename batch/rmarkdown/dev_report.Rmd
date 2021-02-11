@@ -81,6 +81,9 @@ make_fancy_caption <- function(fancy_caption = "") {
 }
 
 sum_pos_table <- function(.data, fancy_caption = "", ...) {
+  if(nrow(.data) == 0) {
+    return("Ingen sekvenser opfylder selektionskriteriet, se filter i denne kodeblok")
+  }
   .data %>% 
     sum_pos %>% 
     mutate(across(c(point_est, lower, upper), scales::percent_format(accuracy = 0.01))) %>% 
@@ -308,6 +311,21 @@ count(ready, lineage == "B.1.351", `B.1.351-like`)
 count(ready, lineage == "P.1.1.28", `P.1.1.28-like`)
 ```
 
+## Ekstra mutationer i VOCs
+
+```{r voc-added-mutations}
+ready %>% 
+  filter(variants_of_concern != "Not a VOC") %>% 
+  separate_rows(aaSubstitutions, sep = ",") %>% 
+  count(lineage, aaSubstitutions) %>% 
+  arrange(lineage, desc(n)) %>% 
+  filter(n != max(n)) %>% 
+  DT::datatable(rownames = FALSE,
+                filter = "top",
+                caption = make_fancy_caption("Ekstra mutationer i VOC lineages"))
+```
+
+
 # Deletion 69-70 and association with lineages
 
 Tabeller for hver af de tre spørgsmål:
@@ -338,6 +356,22 @@ ready %>%
   DT::datatable(rownames = FALSE,
                 caption = make_fancy_caption("Antal af prøver med deletion 69-70, per uge og lineage"))
 ```
+
+# E484K og dens lineages
+
+```{r eeek}
+# Vi har ikke nogle E484K, ved 0 rækker giver sum_pos_table en fejl.
+ready %>%
+  filter(E484K) %>%
+  group_by(lineage) %>%
+  sum_pos_table("Hvilke lineages har vi med E484K?")
+
+ready %>%
+  filter(E484K) %>%
+  group_by(week, lineage) %>%
+  sum_pos_table("Hvilke lineages har vi med E484K? fordelt på uge")
+```
+
 
 # Mutationsovervågning
 
