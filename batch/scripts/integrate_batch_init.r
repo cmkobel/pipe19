@@ -23,15 +23,15 @@ file_integrated_out = args[5]
 
 if (development_mode) {
     
-    batch = "201215"
+    batch = "210209"
     
     # Inputs
-    file_input = "output/201215/201215_input.tab"
-    file_nextclade = "output/201215/201215_nextclade.tab"
-    file_pangolin = "output/201215/201215_pangolin.csv"
+    file_input = "output/210209/210209_input.tab"
+    file_nextclade = "output/210209/210209_nextclade.tab"
+    file_pangolin = "output/210209/210209_pangolin.csv"
 
     # Outputs
-    file_integrated_out = "output/201215/201215_integrated_init.tsv"
+    file_integrated_out = "output/210209/210209_integrated_init.tsv"
 }
 
 write("These are the args:", stderr())
@@ -58,7 +58,6 @@ df_input = raw_input %>%
                                     paste0(sample_name_prefix_converted, sample_name_suffix),
                                     paste0(raw_sample_name))) %>% 
     ungroup() %>% 
-
 
     select(raw_full_name, batch, plate, moma_serial, raw_sample_name, ya_sample_name, type, extension, source_project, path, R1, R2)
 
@@ -93,16 +92,29 @@ df_integrated = df_integrated %>%
     # Intermediary debug view
     #select(batch, ya_sample_name, plate, type, totalMissing, totalMissing_interpreted) %>% View()
     
-    mutate(plate_negative_control_summary = if_else(type == "control/other" & !str_detect(tolower(raw_sample_name), "positiv|^pos|^afd") & (totalMissing_interpreted <= 29903/2),
-                                                    "unsatisfactory",
-                                                    "satisfactory")) %>%
+  
+    # Start by marking - for each row - whether there is a problem
+    # mutate(plate_negative_control_summary = if_else(type == "control/other" & !str_detect(tolower(raw_sample_name), "positiv|^pos|^afd") & (totalMissing_interpreted <= 29903/2),
+    #                                                 "unsatisfactory",
+    #                                                 "satisfactory")) %>%
     
+  
+    # New implementation using "negative_control", "positive_control" and "other"
+    # Also using case_when instead of if_else
+    mutate(plate_control_summary = case_when(type == "positive_control" & totalMissing_interpreted >= 3000 ~ "unsatisfactory",
+                                             type == "negative_control" & totalMissing_interpreted <= 29903/2 ~ "unsatisfactory",
+                                             TRUE ~ "satisfactory")) %>%  # Will I ever understand why the else-clause uses TRUE!?
+  
+  
+  
     # Intermediary debug view
     #select(batch, ya_sample_name, plate, type, totalMissing, plate_negative_control_summary) %>% View
  
-    mutate(plate_negative_control_summary = if_else(any("unsatisfactory" %in% unique(plate_negative_control_summary)),
+    mutate(plate_control_summary = if_else(any("unsatisfactory" %in% unique(plate_control_summary)),
                                                     "unsatisfactory",
                                                     "satisfactory")) #select(plate_negative_control_summary, everything()) %>%  View
+
+    # Så mangler jeg bare at opdatere rprt_target r-scriptet
 
     # summarize(plate_negative_control_summary = if_else(any("unsatisfactory" %in% unique(plate_negative_control_summary)),
     #                                           "unsatisfactory",

@@ -22,8 +22,8 @@ out_p1 = args[3]
 out_p2 = args[4]
 
 if (devel_mode) {
-    integrated_file = "~/GenomeDK/clinmicrocore/pipe19/batch/integrated_init.tsv"
-    arg_batch = 210120
+    integrated_file = "~/GenomeDK/clinmicrocore/pipe19/batch/output/210209/210209_integrated_init.tsv" # One could also just read the integrated from the batch
+    arg_batch = 210209
     out_p1 = "writethefilehere_A.pdf"
     out_p2 = "writethefilehere_B.pdf"
     
@@ -32,9 +32,9 @@ if (devel_mode) {
 
 
 integrated = read_tsv(integrated_file) %>% 
-    filter(!str_detect(tolower(raw_sample_name), "positiv|^pos|^afd")) %>%
+    #filter(!str_detect(tolower(raw_sample_name), "positiv|^pos|^afd")) %>%
+    
     #mutate(totalMissing = if_else((is.na(totalMissing) | totalMissing == "totalMissing"), 29903, as.double(totalMissing))) %>%
-    mutate(totalMissing = if_else((is.na(totalMissing) | totalMissing == "totalMissing"), 29903, as.double(totalMissing))) %>%
     
     filter(batch == arg_batch)
 
@@ -46,20 +46,26 @@ size =  round( 1.5 + (integrated %>% pull(plate) %>% unique %>% length)*(1))
 integrated %>% 
     #filter(plate != 9999) %>% 
     group_by(batch, plate) %>% 
-    arrange(totalMissing) %>% 
-    mutate(rank_totalMissing = row_number(totalMissing)) %>% 
+    arrange(totalMissing_interpreted) %>% 
+    mutate(rank_totalMissing_interpreted = row_number(totalMissing_interpreted)) %>% 
+    ungroup() %>% 
     
-    mutate(type = if_else(type == "control/other", "neg. control", type)) %>% 
+    #mutate(type = if_else(type == "control/other", "neg. control", type)) %>% 
     
-    select(batch, raw_sample_name, type, totalMissing, rank_totalMissing, plate_negative_control_summary) %>% 
+    select(batch, raw_sample_name, plate, type, totalMissing_interpreted, rank_totalMissing_interpreted, plate_control_summary) %>% 
+  
+  
+  
     
-    ggplot(aes(rank_totalMissing, totalMissing)) + 
-    geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.3) +
+    ggplot(aes(rank_totalMissing_interpreted, totalMissing_interpreted)) + 
+    geom_hline(yintercept = 29903/2, color = "#F7866D", alpha = 0.4, linetype = "dashed") +
+    geom_hline(yintercept = 3000, color = "#00BA38", alpha = 0.4, linetype = "dashed") +
+  
     geom_line(color = "grey50") + 
     
     geom_point(aes(color = type)) +
     
-    facet_grid(paste0(plate, "\n", plate_negative_control_summary)~., scales = "fixed") +
+    facet_grid(paste0(plate, "\n", plate_control_summary)~., scales = "fixed") +
     
     
     xlim(1, 100) +
@@ -67,7 +73,7 @@ integrated %>%
     labs(title = paste("Batch", arg_batch),
          x = "samples ordered by missing bases",
          y = "missing bases",
-         caption = "The blue line indicates coverage in half a SARS-CoV-2 genome.")
+         caption = "The dashed lines show the thresholds for the positive (3000b) and negative (14951b) controls.")
 
 
 ggsave(out_p1, height = size, width = 10.5)
@@ -76,30 +82,30 @@ ggsave(out_p1, height = size, width = 10.5)
 integrated %>% 
     #filter(plate != 9999) %>% 
     group_by(batch, plate) %>% 
-    arrange(totalMissing) %>% 
-    mutate(rank_totalMissing = row_number(moma_serial)) %>% 
+    arrange(totalMissing_interpreted) %>% 
+    mutate(rank_totalMissing_interpreted = row_number(moma_serial)) %>% 
     
     mutate(type = if_else(type == "control/other", "neg. control", type)) %>% 
     
-    select(batch, raw_sample_name, type, totalMissing, rank_totalMissing, plate_negative_control_summary) %>% 
+    select(batch, raw_sample_name, type, totalMissing_interpreted, rank_totalMissing_interpreted, plate_control_summary) %>% 
     
-    ggplot(aes(rank_totalMissing, totalMissing)) + 
-    geom_hline(yintercept = 29903/2, color = "blue", alpha = 0.3) +
-    #geom_line(color = "grey50") + 
+    ggplot(aes(rank_totalMissing_interpreted, totalMissing_interpreted)) + 
+    geom_hline(yintercept = 29903/2, color = "#F7866D", alpha = 0.4, linetype = "dashed") +
+    geom_hline(yintercept = 3000, color = "#00BA38", alpha = 0.4, linetype = "dashed") +
     
     geom_point(aes(color = type)) +
     
-    facet_grid(paste0(plate, "\n", plate_negative_control_summary)~., scales = "fixed") +
+    facet_grid(paste0(plate, "\n", plate_control_summary)~., scales = "fixed") +
 
     
-    scale_x_continuous(breaks = seq(0, 96, 8), minor_breaks = NULL)+
+    scale_x_continuous(breaks = seq(0, 96, 8), minor_breaks = NULL, limits = c(1, 100))+
     scale_y_continuous(breaks = c(0, 29903), limits = c(-10000, 40000))+ 
 
-
+    #xlim(1, 100) +
     labs(title = paste("Batch", arg_batch),
          x = "samples ordered by library ID (moma_serial)",
          y = "missing bases",
-         caption = "The blue line indicates coverage in half a SARS-CoV-2 genome.")
+         caption = "The dashed lines show the thresholds for the positive (3000b) and negative (14951b) controls.")
 
 
 

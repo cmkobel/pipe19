@@ -216,8 +216,10 @@ target3 << \
     f"""
 
     # Make sure the old report is cleared if singularity fails without error.
-    rm -f rmarkdown/seq_report.html
+    rm -f rmarkdown/seq_report.html rmarkdown/Rplots.pdf
+    rm -r rmarkdown/figure || echo "no figure-dir to delete"
     rm -f ready.RDS
+
 
     # Generate report
     singularity run docker://marcmtk/sarscov2_seq_report \
@@ -225,7 +227,7 @@ target3 << \
     
 
 
-    #    marc.nielsen@rm.dk
+    # {mail_list}
     mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html {mail_list} <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
 
 Se vedhæftede html-fil.
@@ -243,12 +245,18 @@ Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
 
     # Simple way of keeping track of whether each new version of the report has been sent.
     mkdir -p rmarkdown/flags
-    touch {target3.outputs[0]} 
+    touch {target3.outputs[0]}
 
 
     # Backup the reports
     mkdir -p rmarkdown/old_reports
     cp rmarkdown/seq_report.html {target3.outputs[1]}
+
+
+    # Clean up; problems with permissions
+    rm -f rmarkdown/Rplots.pdf
+    rm -r rmarkdown/figure || echo "no figure-dir to delete"
+
 
     """
 

@@ -117,7 +117,7 @@ df_integrated %>% write_tsv(file_integrated_out)
 write(paste("writing sample sheet to", file_sample_sheet_out), stderr())
 df_sample_sheet = df_integrated %>%
     filter(type == "sample") %>% 
-    filter(plate_negative_control_summary != "unsatisfactory") %>%  
+    filter(plate_control_summary != "unsatisfactory") %>%  
     rowwise() %>% 
     mutate(kma_id = "6620320",
            raw_full_name = paste0(batch, ".", plate, ".", moma_serial, "_", raw_sample_name),
@@ -173,7 +173,7 @@ command_consensus = df_sample_sheet %>%
   
     transmute(command = paste("cp", source_file, target_dir))
 
-command_consensus %>% select(`#!/bin/bash` = command) %>% write_tsv(paste0("output/", batch, "/", batch, "_cp_consensus.sh"))
+command_consensus %>% select(`#!/bin/bash` = command) %>% write_tsv(paste0("output/", batch, "/", batch, "_cp_consensus.sh")) # TODO: Make as a space-delimited file instead of tsv.
 
 # if (!development_mode) {
 #     system(command_consensus %>% pull(command) %>% paste(collapse = "; "))
