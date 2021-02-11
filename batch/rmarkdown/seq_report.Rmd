@@ -12,8 +12,7 @@ editor_options:
 ---
 
 ```{r global-options, include = FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "100%", dev = c("svg", "png"),
-                      fig.path = "figure/")
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "100%", dev = c("svg", "png"))
 ```
 
 
@@ -81,6 +80,9 @@ make_fancy_caption <- function(fancy_caption = "") {
 }
 
 sum_pos_table <- function(.data, fancy_caption = "", ...) {
+  if(nrow(.data) == 0) {
+    return("Ingen sekvenser opfylder selektionskriteriet, se filter i denne kodeblok")
+  }
   .data %>% 
     sum_pos %>% 
     mutate(across(c(point_est, lower, upper), scales::percent_format(accuracy = 0.01))) %>% 
@@ -230,7 +232,7 @@ ready %>%
 
 Lineage figuren bliver hurtigt svær at aflæse, derfor vises herunder de 5 hyppigste lineages og de specificerede bekymrende varianter: `r VOCs`
 
-```{r focus-lineages-plot-table, warning = FALSE}
+```{r focus-lineages-plot-table, warning=FALSE}
 plot_stacked_area_by(epi_date_week, focus_lineages) & scale_fill_paletteer_d("colorblindr::OkabeIto")
 
 ready %>% 
@@ -308,6 +310,36 @@ count(ready, lineage == "B.1.351", `B.1.351-like`)
 count(ready, lineage == "P.1.1.28", `P.1.1.28-like`)
 ```
 
+
+## Epidemikurve for bekmyrende varianter
+
+```{r voc-epicurve}
+ready %>% 
+  filter(variants_of_concern != "Not a VOC") %>% 
+  ggplot(aes(week, colour = variants_of_concern)) +
+  stat_count(geom = "point", size = 3) +
+  scale_colour_viridis_d(option = "magma") +
+  labs(x = "Uge",
+       y = "Antal",
+       colour = "Variant",
+       title = "Epidemikurve for bekymrende varianter")
+```
+
+## Ekstra mutationer i VOCs
+
+```{r voc-added-mutations}
+ready %>% 
+  filter(variants_of_concern != "Not a VOC") %>% 
+  separate_rows(aaSubstitutions, sep = ",") %>% 
+  count(lineage, aaSubstitutions) %>% 
+  arrange(lineage, desc(n)) %>% 
+  filter(n != max(n)) %>% 
+  DT::datatable(rownames = FALSE,
+                filter = "top",
+                caption = make_fancy_caption("Ekstra mutationer i VOC lineages"))
+```
+
+
 # Deletion 69-70 and association with lineages
 
 Tabeller for hver af de tre spørgsmål:
@@ -338,6 +370,22 @@ ready %>%
   DT::datatable(rownames = FALSE,
                 caption = make_fancy_caption("Antal af prøver med deletion 69-70, per uge og lineage"))
 ```
+
+# E484K og dens lineages
+
+```{r eeek}
+# Vi har ikke nogle E484K, ved 0 rækker giver sum_pos_table en fejl.
+ready %>%
+  filter(E484K) %>%
+  group_by(lineage) %>%
+  sum_pos_table("Hvilke lineages har vi med E484K?")
+
+ready %>%
+  filter(E484K) %>%
+  group_by(week, lineage) %>%
+  sum_pos_table("Hvilke lineages har vi med E484K? fordelt på uge")
+```
+
 
 # Mutationsovervågning
 
@@ -494,9 +542,17 @@ Sekvenser med manglende baser >= 3000: `r sum(as.integer(illumina$totalMissing) 
 
 ```{r qc}
 qc <- illumina %>%
+  filter(type == "sample") %>% 
   mutate(qc.overallStatus = factor(qc.overallStatus,
-                                   levels = c("bad", "mediocre", "good")),
-         ordered = TRUE) %>%
+                                   levels = c("bad", "mediocre", "good"),
+                                   ordered = TRUE),
+         fail_category = cut(totalMissing_interpreted, 
+                             breaks = c(0, 300, 600, 3000, 30000),
+                             labels = c("0-300",
+                                        "300-600",
+                                        "600-3000",
+                                        "3000-alle")),
+         fail_category = fct_rev(fail_category)) %>%
   rowwise() %>%
   mutate(lowest_ct = min(c_across(c(X16, X19, X22, X25, X28, X31, X34, X37, X40, X43, ct)), na.rm = TRUE),
          lowest_ct = na_if(lowest_ct, Inf)) %>%
@@ -507,8 +563,10 @@ qc <- illumina %>%
 
 ```{r qc-2}
 qc %>% 
-  ggplot(aes(lowest_ct, totalMissing)) + 
-  geom_miss_point() +
+  ggplot(aes(lowest_ct, totalMissing_interpreted)) + 
+  geom_miss_point(alpha = 0.2) +
+  scale_x_continuous(breaks = seq(0, 40, by = 10), minor_breaks = seq(0, 40, by = 2)) +
+  coord_cartesian(xlim = c(0, 40)) + 
   labs(x = "Ct", y = "Manglende baser", colour = "Manglende data på variablen",
        title = "Manglende baser ifht. Ct") +
   theme(legend.position = "bottom")
@@ -516,11 +574,50 @@ qc %>%
 
 
 ```{r qc-3}
+four_colour_okabe <- c("#E69F00", "#F0E442", "#009E73", "#56B4E9")
 qc %>% 
   filter(lowest_ct > 3) %>% 
-  ggplot(aes(lowest_ct, totalMissing)) + 
+  filter(!is.na(fail_category)) %>% 
+  ggplot(aes(lowest_ct, colour = fail_category)) + 
   stat_ecdf() + 
-  labs(x = "Ct", y = "Manglende baser", title = "Fordeling af totale manglende baser")
+  scale_colour_manual(values = four_colour_okabe) +
+  scale_x_continuous(breaks = seq(10, 40, by = 5), minor_breaks = seq(0, 40, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2)) +
+  coord_cartesian(xlim = c(10, 40)) + 
+  labs(x = "Ct", 
+       y = "Proportion i gruppen", 
+       title = "Fordeling af sekvenser i kategorier",
+       colour = "Sekvenser med x-y manglende baser,\nfærre manglende er bedre",
+       caption = "Punkterne er gjort delvist gennemsigtige for at visualisere mængden af sekvenser ved hver punkt") + 
+  theme(legend.position = "bottom")
+  
+qc3b_left <- qc %>% 
+  filter(lowest_ct > 3, !is.na(fail_category)) %>% 
+  ggplot(aes(lowest_ct, fill = fail_category)) + 
+  geom_bar(position = "fill", colour = "black") +
+  scale_fill_manual(values = four_colour_okabe) +
+  scale_x_continuous(breaks = seq(10, 40, by = 5), minor_breaks = 10:40) +
+  coord_cartesian(xlim = c(10, 40)) +
+  theme_minimal() +
+  labs(x = "Ct",
+       y = "Proportion", 
+       fill = "Manglende baser",
+       title = "Sekvenser med manglende baser efter Ct")
+
+qc3b_right <- qc %>% 
+  filter(lowest_ct > 3, !is.na(fail_category)) %>% 
+  ggplot(aes(lowest_ct, fill = fail_category)) + 
+  geom_bar(colour = "black") +
+  scale_fill_manual(values = four_colour_okabe) +
+  scale_x_continuous(breaks = seq(10, 40, by = 5), minor_breaks = 10:40) +
+  coord_cartesian(xlim = c(10, 40)) +
+  theme_minimal() +
+  labs(x = "Ct",
+       y = "Antal", 
+       fill = "Manglende baser",
+       title = "")
+
+qc3b_left + qc3b_right + plot_layout(guides = "collect") & theme(legend.position = "bottom")
 ```
 
 
@@ -529,7 +626,7 @@ qc4_left <- qc %>%
   filter(lowest_ct > 3) %>%
   count(lowest_ct, qc.overallStatus) %>%
   ggplot(aes(lowest_ct, n, fill = qc.overallStatus)) +
-  geom_col(position = "fill", colour = "white") +
+  geom_col(position = "fill", colour = "black") +
   scale_fill_paletteer_d("colorblindr::OkabeIto") +
   scale_x_continuous(breaks = seq(10, 40, by = 5), minor_breaks = 10:40) +
   coord_cartesian(xlim = c(10, 40)) +
@@ -543,7 +640,7 @@ qc4_right <- qc %>%
   filter(lowest_ct > 3) %>%
   count(lowest_ct, qc.overallStatus) %>%
   ggplot(aes(lowest_ct, n, fill = qc.overallStatus)) +
-  geom_col(colour = "white") +
+  geom_col(colour = "black") +
   scale_fill_paletteer_d("colorblindr::OkabeIto") +
   scale_x_continuous(breaks = seq(10, 40, by = 5), minor_breaks = 10:40) +
   coord_cartesian(xlim = c(10, 40)) +

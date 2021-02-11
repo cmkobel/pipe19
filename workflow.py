@@ -109,7 +109,7 @@ for index, row in df.iterrows():
     else:
         print(f" creating the file {batch_input_file}")
         try:
-            command = f"singularity run {config['singularity_images']}/tidyverse_latest.sif Rscript scripts/parse_path.r {row['batch']} {row['path']} {mads_year} FALSE {row['format_specifier']} > other/input_tmp.tab && mv other/input_tmp.tab {batch_input_file}" # TODO: delete the batch_input_file if it is empty 
+            command = f"singularity run --cleanenv {config['singularity_images']}/tidyverse_latest.sif Rscript scripts/parse_path.r {row['batch']} {row['path']} {mads_year} FALSE {row['format_specifier']} > other/input_tmp.tab && mv other/input_tmp.tab {batch_input_file}" # TODO: delete the batch_input_file if it is empty 
             subprocess.run(command, shell = True, check = True)
         except subprocess.CalledProcessError as e:
             print(f"\nAn error occured while initializing {row['batch']}:\n", e)
@@ -259,7 +259,7 @@ for index, row in df.iterrows():
             mkdir -p {t_pangolin.outputs[0]}
 
 
-            singularity run {config['singularity_images']}/pangolin_latest.sif \
+            singularity run --cleanenv {config['singularity_images']}/pangolin_latest.sif \
                 pangolin {t_pangolin.inputs[0]} \
                     --outdir {t_pangolin.outputs[0]}
 
@@ -301,7 +301,7 @@ for index, row in df.iterrows():
             mkdir -p {t_nextclade.outputs['dir']}
 
             # should always print header
-            singularity run {config['singularity_images']}/nextclade_latest.sif \
+            singularity run --cleanenv {config['singularity_images']}/nextclade_latest.sif \
                     nextclade.js \
                         --input-fasta {t_nextclade.inputs[0]} \
                         --output-tsv {t_nextclade.outputs['tab']}.tmp

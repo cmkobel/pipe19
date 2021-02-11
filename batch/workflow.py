@@ -63,7 +63,7 @@ for index, input_file in enumerate(df):
 
 
         # Integrate input-pangolin-nextclade files, before joining patient-data
-        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+        singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/integrate_batch_init.r {prefix} {target0.outputs[0]} {target0.outputs[1]} {target0.outputs[2]} {target0.outputs[3]}
             # Rscript args:                               1                    2                    3                    4                    5
 
@@ -72,7 +72,7 @@ for index, input_file in enumerate(df):
         # TODO: Make it as a regular target with a real Rscript.
         cat output/*/*integrated_init.tsv > integrated_init.tsv
 
-        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+        singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/fix_tsv.r integrated_init.tsv
 
 
@@ -87,7 +87,7 @@ for index, input_file in enumerate(df):
     target0B << \
         f"""
 
-        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+        singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/batch_qc.r {target0B.inputs[3]} {prefix} {target0B.outputs[0]} {target0B.outputs[1]} 
             # Rscript args:                               1        2                     3                     4
 
@@ -115,7 +115,7 @@ for index, input_file in enumerate(df):
 
 
         # This file joins everything together, compresses and the files and produces a metadata file for upload
-        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+        singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/integrate_batch.r {prefix} {target1.inputs[3]} "mads/latest/*.csv" {target1.outputs[0]} {target1.outputs[1]}
         # Rscript args:                             1                   2                   3                    4                    5
 
@@ -124,7 +124,7 @@ for index, input_file in enumerate(df):
         # TODO: Make it as a regular target with a real Rscript
         cat output/*/*integrated.tsv > integrated.tsv
 
-        singularity run ~/faststorage/singularity_images/tidyverse_latest.sif \
+        singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/fix_tsv.r integrated.tsv
 
 
@@ -215,6 +215,8 @@ target3 = gwf.target(f"b3_report",
 target3 << \
     f"""
 
+
+
     # Make sure the old report is cleared if singularity fails without error.
     rm -f rmarkdown/seq_report.html rmarkdown/Rplots.pdf
     rm -r rmarkdown/figure || echo "no figure-dir to delete"
@@ -222,7 +224,7 @@ target3 << \
 
 
     # Generate report
-    singularity run docker://marcmtk/sarscov2_seq_report \
+    singularity run --cleanenv docker://marcmtk/sarscov2_seq_report \
         render.r rmarkdown/seq_report.Rmd
     
 
@@ -265,11 +267,15 @@ target4 = gwf.target(f"b4_voc_list",
     outputs = f"rmarkdown/old_reports/{highest_batch_id}_voc_list.html",
     memory = '2g')
 target4 << f"""
+
+
+
+
     # Make sure the old report is cleared if singularity fails without error.
     rm -f rmarkdown/voc_list.html
 
     # Generate report
-    singularity run docker://marcmtk/sarscov2_seq_report \
+    singularity run --cleanenv docker://marcmtk/sarscov2_seq_report \
         render.r rmarkdown/voc_list.Rmd
         
     # Backup the reports
