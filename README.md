@@ -30,7 +30,14 @@ For each batch of samples, the following is done:
 
 ## Setup
 
-Use config.yaml for setting the input/output directories and the like.
+1. Clone the repo into the dir where you want its' base to be: `git clone git@github.com:cmkobel/pipe19.git`
 
-Make sure you install all dependencies listed in conda_env.yml. E.g. with the following command: `conda env create -f conda_env.yml`
+2. Install dependencies listed in conda_env.yml:
+`conda env create -f conda_env.yml`
+
+3. Set up your local parameters in the config_example.yaml file. 
+
+
+
+
   
