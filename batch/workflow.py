@@ -218,9 +218,8 @@ target3 << \
 
 
     # Make sure the old report is cleared if singularity fails without error.
-    rm -f rmarkdown/seq_report.html rmarkdown/Rplots.pdf
-    rm -r rmarkdown/figure || echo "no figure-dir to delete"
-    rm -f ready.RDS
+    rm -f rmarkdown/seq_report.html ready.RDS
+
 
 
     # Generate report
@@ -238,7 +237,7 @@ Se vedhæftede html-fil.
 __
 
 Klinisk Mikrobioinformatisk Enhed
-carkob@rm.dk
+carkob@rm.dk, marc.nielsen@rm.dk
 Klinisk Mikrobiologi ▪ Region Midtjylland
 Aarhus Universitetshospital
 Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
@@ -253,11 +252,6 @@ Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
     # Backup the reports
     mkdir -p rmarkdown/old_reports
     cp rmarkdown/seq_report.html {target3.outputs[1]}
-
-
-    # Clean up; problems with permissions
-    rm -f rmarkdown/Rplots.pdf
-    rm -r rmarkdown/figure || echo "no figure-dir to delete"
 
 
     """
@@ -281,4 +275,6 @@ target4 << f"""
     # Backup the reports
     mkdir -p rmarkdown/old_reports
     cp rmarkdown/voc_list.html {target4.outputs}
+
+
     """

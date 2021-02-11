@@ -70,9 +70,16 @@ input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%
     separate(extension, c("001", "extension"), 3, convert = F) %>% 
     
     # add a column that tells whether the file is a control or not
-    mutate(type = if_else(str_detect(tolower(sample_name), "negativ|positiv|blank|tom|^afd|^00|^h2o|^neg|neg$|^empty"),
-                          "control/other",
-                          "sample"))
+    # mutate(type = if_else(str_detect(tolower(sample_name), "negativ|positiv|blank|tom|^afd|^00|^h2o|^neg|neg$|^empty"),
+    #                       "control/other",
+    #                       "sample"))
+
+
+    mutate(type = case_when(str_detect(tolower(sample_name), "positiv|pos$|seqpos") ~ "positive_control",
+                            str_detect(tolower(sample_name), "negativ|h2o|^empty|blank|tom|^neg|neg$") ~ "negative_control",
+                            str_detect(tolower(sample_name), "^afd|^00") ~ "other",
+                            TRUE ~ "sample"))
+    
 
 
 # Backwards compatibility:
@@ -121,7 +128,9 @@ input_grouped = input %>%
                 values_fn = pastecollapsed) %>% 
     mutate(path = path,
            batch = batch) %>% 
-    select(batch, plate, moma_serial, raw_sample_name = sample_name, type, extension, source_project, path, R1, R2) # Reorder the columns
+    select(batch, plate, moma_serial, raw_sample_name = sample_name, type, extension, source_project, path, R1, R2) %>% # Reorder the columns
+    arrange(moma_serial)
+    
 
 
 # Write the input_grouped table to disk so the python-gwf-workflow can be started.
