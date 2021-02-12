@@ -1,4 +1,5 @@
-# First, call collect.sh to collect all the results together
+
+
 
 # Then import it
 
