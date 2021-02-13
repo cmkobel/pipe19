@@ -184,7 +184,7 @@ for index, row in df.iterrows():
             outputs = {'dir': f"{output_base}/{full_name}/aligned",
                        'bam': f"{output_base}/{full_name}/aligned/{full_name}.sorted.trimmed.bam"},
             cores = 4,
-            memory = '4gb',
+            memory = '8gb',
             walltime = '03:00:00')
         t_map << \
             f"""
