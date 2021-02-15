@@ -159,7 +159,10 @@ illumina <- read_tsv(here("batch", "integrated.tsv")) %>%
 ```
 
 ```{r ready, warning = FALSE}
-VOCs <- c("B.1.1.7", "B.1.351", "P.1")
+VOCs <- c("B.1.1.7", "B.1.351", "P.1", "A.23.1", "B.1.525")
+MOIs <- # Mutations of interest
+          c("S:H69-", "S:V70-", 
+          "S:E484K", "S:N501Y", "S:Y453F") 
 
 ready_step1 <- illumina %>% 
   mutate(date  = coalesce(as.Date(modtaget), lubridate::ymd(substr(batch, 0, 6))),
@@ -334,14 +337,16 @@ ready %>%
   separate_rows(aaSubstitutions, sep = ",") %>% 
   count(lineage, aaSubstitutions) %>% 
   arrange(lineage, desc(n)) %>% 
+  group_by(lineage) %>% 
   filter(n != max(n)) %>% 
+  ungroup() %>% 
   DT::datatable(rownames = FALSE,
                 filter = "top",
                 caption = make_fancy_caption("Ekstra mutationer i VOC lineages"))
 ```
 
 
-# Deletion 69-70 and association with lineages
+# Deletion 69-70 og dens lineages
 
 Tabeller for hver af de tre spørgsmål:
 Hvor mange sekvenser har spike deletionen 69-70?
@@ -496,31 +501,38 @@ heatmap_df %>%
 # Mutationskonstellationer
 
 Et foreslået alternativ til at følge lineages og clades over tid er at følge selve mutationerne.
-Herunder forsøges at fremstille aktuelle billede af disse mutations*konstellationer*.
+Herunder forsøges at fremstille et aktuelt billede af disse mutations*konstellationer*. Bemærk at det er ikke muligt at medtage alle aktuelle mutationer i figuren.
 
 ```{r constellations}
-MOIs <- c("S:H69-", "S:V70-", # Mutations of interest
-          "S:E484K", "S:N501Y", "S:Y453F") 
 mutations_wide <- ready %>%
   select(raw_full_name, lineage, aaSubstitutions, aaDeletions) %>%
   separate_rows(aaSubstitutions, sep = ",") %>% 
-  mutate(sub_present = 1L, lin_present = 1L) %>% 
+  mutate(sub_present = 1L) %>%
   pivot_wider(names_from = aaSubstitutions, values_from = sub_present, values_fill = 0L) %>% 
   separate_rows(aaDeletions, sep = ",") %>% 
   mutate(del_present = 1L) %>% 
   pivot_wider(names_from = aaDeletions, values_from = del_present, values_fill = 0L) %>% 
   select(-`NA`) %>% # Mange prøver har ingen deletioner, nogle har ikke substitutioner
-  pivot_wider(names_from = lineage, values_from = lin_present, values_fill = 0L) %>% 
   as.data.frame() 
 
 mutations_wide %>% 
-  upset(nsets = 25, nintersects = 30, order.by = "freq", 
-        mb.ratio = c(0.3, 0.7))
+  upset(nsets = 27, nintersects = 30, order.by = "freq", 
+        mb.ratio = c(0.3, 0.7)); grid::grid.text("Alle sekvenser", x = 0.11,  y = 0.965, gp = grid::gpar(fontsize=15))
 
 mutations_wide %>% 
-  select(any_of(c(VOCs, MOIs))) %>% 
-  upset(nsets = 25, nintersects = 30, order.by = "freq",
-        mb.ratio = c(0.3, 0.7))
+  filter(lineage == "B.1.1.7") %>% 
+  upset(nsets = 27, nintersects = 30, order.by = "freq", 
+        mb.ratio = c(0.3, 0.7)); grid::grid.text("B.1.1.7", x = 0.05,  y = 0.965, gp = grid::gpar(fontsize=15))
+
+mutations_wide %>% 
+  filter(lineage %in% c("B.1.177", "B.1.177.12", "B.1.177.21")) %>% 
+  upset(nsets = 27, nintersects = 30, order.by = "freq", 
+        mb.ratio = c(0.3, 0.7)); grid::grid.text("B.1.177*", x = 0.07,  y = 0.965, gp = grid::gpar(fontsize=15))
+
+# mutations_wide %>% 
+#   select(any_of(c(VOCs, MOIs))) %>% 
+#   upset(nsets = 25, nintersects = 30, order.by = "freq",
+#         mb.ratio = c(0.3, 0.7))
 
 # Se på set.metadata argumentet
 ```
@@ -565,6 +577,17 @@ svartid %>%
   labs(x = "Dage fra prøvemodtagelse til sekvens",
        y = "Antal",
        title = "Svartid")
+
+svartid %>% 
+  ggplot(aes(modtaget, svartid)) + 
+  geom_jitter(alpha = 0.2) + 
+  geom_smooth(se = FALSE) + 
+  scale_y_continuous(breaks = seq(0, 60, by = 10)) +
+  coord_cartesian(ylim = c(0, 55)) +
+  labs(x = "Prøve modtaget",
+       y = "Dage fra prøvemodtagelse til sekvens", 
+       caption = "Punkterne er gjort delvist gennemsigtige og skubbet lidt for at visualisere mængden af sekvenser ved hver punkt",
+       title = "Udvikling i svartid for sekvensering")
 ```
 
 
@@ -688,7 +711,7 @@ qc4_left + qc4_right + plot_layout(guides = "collect") & theme(legend.position =
 ```{r qc-5}
 qc %>% 
   mutate_at(vars(lowest_ct, totalMissing_interpreted), as.integer) %>% 
-  mutate(eurofins = if_else(`SARS2 Eurofins COV` == "Positiv", "Eurofins", "In-house", missing = "In-house")) %>% 
+  mutate(eurofins = if_else(`SARS2 Eurofins COV` == "Positiv", "Eurofins", "KMA AUH", missing = "KMA AUH")) %>% 
   ggplot(aes(totalMissing_interpreted, colour = eurofins)) + 
   stat_ecdf() + 
   facet_zoom(xlim = c(0, 3000)) +

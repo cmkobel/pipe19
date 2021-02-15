@@ -56,6 +56,7 @@ library(paletteer)
 library(ggforce)
 library(naniar)
 library(here)
+library(UpSetR)
 theme_set(theme_minimal())
 
 sum_pos <- . %>% 
@@ -89,7 +90,7 @@ sum_pos_table <- function(.data, fancy_caption = "", ...) {
     DT::datatable(rownames = FALSE, 
                   filter = "top", 
                   caption = make_fancy_caption(fancy_caption),
-                  options = list(pageLength = 25), 
+                  options = list(pageLength = 5), 
                   ...)
 }
   
@@ -158,7 +159,10 @@ illumina <- read_tsv(here("batch", "integrated.tsv")) %>%
 ```
 
 ```{r ready, warning = FALSE}
-VOCs <- c("B.1.1.7", "B.1.351", "P.1")
+VOCs <- c("B.1.1.7", "B.1.351", "P.1", "A.23.1", "B.1.525")
+MOIs <- # Mutations of interest
+          c("S:H69-", "S:V70-", 
+          "S:E484K", "S:N501Y", "S:Y453F") 
 
 ready_step1 <- illumina %>% 
   mutate(date  = coalesce(as.Date(modtaget), lubridate::ymd(substr(batch, 0, 6))),
@@ -333,14 +337,16 @@ ready %>%
   separate_rows(aaSubstitutions, sep = ",") %>% 
   count(lineage, aaSubstitutions) %>% 
   arrange(lineage, desc(n)) %>% 
+  group_by(lineage) %>% 
   filter(n != max(n)) %>% 
+  ungroup() %>% 
   DT::datatable(rownames = FALSE,
                 filter = "top",
                 caption = make_fancy_caption("Ekstra mutationer i VOC lineages"))
 ```
 
 
-# Deletion 69-70 and association with lineages
+# Deletion 69-70 og dens lineages
 
 Tabeller for hver af de tre spørgsmål:
 Hvor mange sekvenser har spike deletionen 69-70?
@@ -385,7 +391,6 @@ ready %>%
   group_by(week, lineage) %>%
   sum_pos_table("Hvilke lineages har vi med E484K? fordelt på uge")
 ```
-
 
 # Mutationsovervågning
 
@@ -493,6 +498,45 @@ heatmap_df %>%
        caption = "Mutationer der optræder i 5 eller færre sekvenser, er IKKE inkluderet")
 ```
 
+# Mutationskonstellationer
+
+Et foreslået alternativ til at følge lineages og clades over tid er at følge selve mutationerne.
+Herunder forsøges at fremstille et aktuelt billede af disse mutations*konstellationer*. Bemærk at det er ikke muligt at medtage alle aktuelle mutationer i figuren.
+
+```{r constellations}
+mutations_wide <- ready %>%
+  select(raw_full_name, lineage, aaSubstitutions, aaDeletions) %>%
+  separate_rows(aaSubstitutions, sep = ",") %>% 
+  mutate(sub_present = 1L) %>%
+  pivot_wider(names_from = aaSubstitutions, values_from = sub_present, values_fill = 0L) %>% 
+  separate_rows(aaDeletions, sep = ",") %>% 
+  mutate(del_present = 1L) %>% 
+  pivot_wider(names_from = aaDeletions, values_from = del_present, values_fill = 0L) %>% 
+  select(-`NA`) %>% # Mange prøver har ingen deletioner, nogle har ikke substitutioner
+  as.data.frame() 
+
+mutations_wide %>% 
+  upset(nsets = 27, nintersects = 30, order.by = "freq", 
+        mb.ratio = c(0.3, 0.7)); grid::grid.text("Alle sekvenser", x = 0.11,  y = 0.965, gp = grid::gpar(fontsize=15))
+
+mutations_wide %>% 
+  filter(lineage == "B.1.1.7") %>% 
+  upset(nsets = 27, nintersects = 30, order.by = "freq", 
+        mb.ratio = c(0.3, 0.7)); grid::grid.text("B.1.1.7", x = 0.05,  y = 0.965, gp = grid::gpar(fontsize=15))
+
+mutations_wide %>% 
+  filter(lineage %in% c("B.1.177", "B.1.177.12", "B.1.177.21")) %>% 
+  upset(nsets = 27, nintersects = 30, order.by = "freq", 
+        mb.ratio = c(0.3, 0.7)); grid::grid.text("B.1.177*", x = 0.07,  y = 0.965, gp = grid::gpar(fontsize=15))
+
+# mutations_wide %>% 
+#   select(any_of(c(VOCs, MOIs))) %>% 
+#   upset(nsets = 25, nintersects = 30, order.by = "freq",
+#         mb.ratio = c(0.3, 0.7))
+
+# Se på set.metadata argumentet
+```
+
 # Ændringer i PCR primer sites
 
 ```{r pcr-primer-changes}
@@ -533,6 +577,17 @@ svartid %>%
   labs(x = "Dage fra prøvemodtagelse til sekvens",
        y = "Antal",
        title = "Svartid")
+
+svartid %>% 
+  ggplot(aes(modtaget, svartid)) + 
+  geom_jitter(alpha = 0.2) + 
+  geom_smooth(se = FALSE) + 
+  scale_y_continuous(breaks = seq(0, 60, by = 10)) +
+  coord_cartesian(ylim = c(0, 55)) +
+  labs(x = "Prøve modtaget",
+       y = "Dage fra prøvemodtagelse til sekvens", 
+       caption = "Punkterne er gjort delvist gennemsigtige og skubbet lidt for at visualisere mængden af sekvenser ved hver punkt",
+       title = "Udvikling i svartid for sekvensering")
 ```
 
 
@@ -568,7 +623,8 @@ qc %>%
   scale_x_continuous(breaks = seq(0, 40, by = 10), minor_breaks = seq(0, 40, by = 2)) +
   coord_cartesian(xlim = c(0, 40)) + 
   labs(x = "Ct", y = "Manglende baser", colour = "Manglende data på variablen",
-       title = "Manglende baser ifht. Ct") +
+       title = "Manglende baser ifht. Ct",
+       caption = "Punkterne er gjort delvist gennemsigtige for at visualisere mængden af sekvenser ved hver punkt") +
   theme(legend.position = "bottom")
 ```
 
@@ -587,8 +643,7 @@ qc %>%
   labs(x = "Ct", 
        y = "Proportion i gruppen", 
        title = "Fordeling af sekvenser i kategorier",
-       colour = "Sekvenser med x-y manglende baser,\nfærre manglende er bedre",
-       caption = "Punkterne er gjort delvist gennemsigtige for at visualisere mængden af sekvenser ved hver punkt") + 
+       colour = "Sekvenser med x-y manglende baser,\nfærre manglende er bedre") + 
   theme(legend.position = "bottom")
   
 qc3b_left <- qc %>% 
@@ -602,7 +657,7 @@ qc3b_left <- qc %>%
   labs(x = "Ct",
        y = "Proportion", 
        fill = "Manglende baser",
-       title = "Sekvenser med manglende baser efter Ct")
+       title = "Sekvenser med manglende baser ifht. Ct")
 
 qc3b_right <- qc %>% 
   filter(lowest_ct > 3, !is.na(fail_category)) %>% 
@@ -654,9 +709,17 @@ qc4_left + qc4_right + plot_layout(guides = "collect") & theme(legend.position =
 
 
 ```{r qc-5}
-ready %>% 
-  mutate_at(vars(lowest_ct, totalMissing), as.integer) %>% 
-  ggplot(aes(totalMissing, colour = `SARS2 Eurofins COV` == "Positiv")) + 
-  stat_ecdf()
+qc %>% 
+  mutate_at(vars(lowest_ct, totalMissing_interpreted), as.integer) %>% 
+  mutate(eurofins = if_else(`SARS2 Eurofins COV` == "Positiv", "Eurofins", "KMA AUH", missing = "KMA AUH")) %>% 
+  ggplot(aes(totalMissing_interpreted, colour = eurofins)) + 
+  stat_ecdf() + 
+  facet_zoom(xlim = c(0, 3000)) +
+  scale_x_continuous(breaks = c(0, 300, 600, 3000, 5000, 10000, 20000, 30000)) +
+  labs(x = "Manglende baser",
+       y = "Proportion",
+       colour = "Laboratorie") + 
+  theme_gray() +
+  theme(legend.position = "bottom")
 ```
 
