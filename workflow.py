@@ -70,6 +70,40 @@ print()
 # TODO: Solve the problem, that this job could theoretically run simultaneously with the nextclade/pangolin targets.
 
 
+with open("scripts/update.sh", "w") as update_script:
+    update_script.write(f"""
+# Make sure the dirs exist
+mkdir -p {config['singularity_images']} other input
+
+echo "pulling images ..."
+singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
+singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
+singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse
+singularity pull -F --dir {config['singularity_images']} docker://marcmtk/sarscov2_seq_report
+
+echo "updating version-list ..."
+singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> other/update_log.txt
+singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> other/update_log.txt
+singularity run {config['singularity_images']}/tidyverse_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> other/update_log.txt
+singularity run {config['singularity_images']}/sarscov2_seq_report_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> other/update_log.txt
+
+""")
+
+
+# TODO: give the dirs as arguments for the update script, instead of hardcoding it in the file.
+
+
+if(str(input("Update images? ")[:1]).lower()== "y"):
+    try:
+        update_command = f"bash scripts/update.sh"
+        subprocess.run(update_command, shell = True, check = True)
+    except subprocess.CalledProcessError as e:
+        print(f"\nAn error occured while updating the images:\n", e)
+        sys.exit()
+
+
+
+
 
 # Iterate over each line in config['input_list_file']
 for index, row in df.iterrows():
