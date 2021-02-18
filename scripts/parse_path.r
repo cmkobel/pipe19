@@ -28,9 +28,9 @@ format_specifier = args[5]
 # For development, the arguments can also be given manually:
 if (devel) {
     
-    batch = 201209
+    batch = 210212
     #plate = 3471
-    path = "~/GenomeDK/ClinicalMicrobio/faststorage/BACKUP/N331/201209_M07104_0028_000000000-J74H4/fastq/"
+    path = "~/GenomeDK/clinmicrocore/BACKUP/N350/210212_NS500158_0522_AHLHF3AFX2/fastq/"
     year = 20
     convertRIV = "TRUE" # You can't pass a type boolean over cli. Only text
     format_specifier = "formatA"
@@ -64,10 +64,11 @@ if (length(files) < 1) {
 }
 
 write("parsing list of files ...", stderr())
-input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%  
+input = read_table(paste0(files, collapse = "\n"), col_names = "basename") %>% # write_tsv("debug0.tsv")
+    #stop()
     mutate(basename_duplicate = basename) %>% 
     separate(basename_duplicate, column_format, "(_|-)", convert = F) %>% 
-    separate(extension, c("001", "extension"), 3, convert = F) %>% 
+    separate(extension, c("001", "extension"), 3, convert = F) %>% #View#write_tsv("debug0.tsv")
     
     # add a column that tells whether the file is a control or not
     # mutate(type = if_else(str_detect(tolower(sample_name), "negativ|positiv|blank|tom|^afd|^00|^h2o|^neg|neg$|^empty"),
@@ -79,8 +80,10 @@ input = read_table(paste0(files, collapse = "\n"), col_names = "basename")%>%
                             str_detect(tolower(sample_name), "negativ|h2o|^empty|blank|tom|^neg|neg$") ~ "negative_control",
                             str_detect(tolower(sample_name), "^afd|^00") ~ "other",
                             TRUE ~ "sample"))
-    
 
+
+write(paste("got to the other side ", getwd()), stderr())
+input %>% write_tsv("debug1.tsv")
 
 # Backwards compatibility:
 # If no plate number is given in the file name, insert 9999

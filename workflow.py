@@ -93,7 +93,7 @@ singularity run {config['singularity_images']}/sarscov2_seq_report_latest.sif R 
 # TODO: give the dirs as arguments for the update script, instead of hardcoding it in the file.
 
 
-if(str(input("Update images? ")[:1]).lower()== "y"):
+if(str(input("Update images? (y|n)")[:1]).lower()== "y"):
     try:
         update_command = f"bash scripts/update.sh"
         subprocess.run(update_command, shell = True, check = True)

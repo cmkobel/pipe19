@@ -2,6 +2,7 @@ from gwf import Workflow
 
 import pandas as pd
 import glob
+import yaml
 
 gwf = Workflow(defaults={
     "mail_user": "kobel@pm.me",
@@ -14,28 +15,53 @@ gwf = Workflow(defaults={
 input_glob = "../input/*.tab"
 output_base = "output"
 
-# TODO: Use the input files in ../input/* instead of the input_list.tab file. Using the latter means that the batch pipelin will run all over each time the input_list.tab file is touched.
+
+with open('../config.yml') as file:
+    config = yaml.full_load(file)
+
 #df = pd.read_table(input_list_file, sep="\t", names = ["batch", "path", "method"], comment = "#")
 
-df = sorted(glob.glob(input_glob))
+# df = sorted(glob.glob(input_glob))
+# 
+# print(df)
+# print("//")
+# print()
 
 
+input_list = pd.read_table("../" + config['input_list_file'], sep="\t", names = ["batch", "path", "format_specifier"], comment = "#")
+input_list["input_file"] = ("../" + config["input_base"] + "/" + input_list["batch"] + ".tab")
+print(input_list)
+print("//")
+print()
 
 
 batch_done_list = []
 
-batch_list = []
+#batch_list = []
 
 #for index, row in df.iterrows():
-for index, input_file in enumerate(df):
-    row = pd.read_table(input_file, sep = "\t")
+for index, input_list_row in input_list.iterrows():
+#for index, input_file in enumerate(df):
+    prefix = input_list_row["batch"]
+    input_file = input_list_row["input_file"]
+
+    input_table = pd.read_table(input_file, sep = "\t")
+
+
+    # A little bit of input validation.
+    il_batch = str(input_list_row["batch"])
+    it_batch = str(set(input_table["batch"]))
+    if il_batch not in it_batch:
+        raise Exception(f"Discrepancy between content of input list batch ({il_batch}) and input table ({it_batch})")
+
+
     print()
 
     #prefix = f"{row['batch'][0]}"
-    prefix = input_file.split("/")[-1].split(".")[0]
-    batch_list.append(prefix)
-    print(f"Batch {index}: {prefix}")
-    # if row["bath"] in blacklist:
+    #prefix = input_file.split("/")[-1].split(".")[0]
+    #batch_list.append(prefix)
+    print(f"Batch {index}: {prefix} ({input_file})")
+    # if row["batch"] in blacklist:
     #    continue
 
 
@@ -204,7 +230,9 @@ for index, input_file in enumerate(df):
 
 bs = "\n"
 
-highest_batch_id = sorted(batch_list)[-1]
+#highest_batch_id = sorted(batch_list)[-1]
+highest_batch_id = max(input_list["batch"])
+print("highest_batch_id", highest_batch_id)
 mail_list = open("mail_list.txt", "r").read()
 
 target3 = gwf.target(f"b3_report",
@@ -229,7 +257,7 @@ target3 << \
 
 
     # {mail_list}
-    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html {mail_list} <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
+    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html carkob@rm.dk <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
 
 Se vedhæftede html-fil.
 
