@@ -70,13 +70,17 @@ print()
 # TODO: Solve the problem, that this job could theoretically run simultaneously with the nextclade/pangolin targets.
 
 
+
+# Dynamically generate an update script that can be run from the frontend.
 with open("scripts/update.sh", "w") as update_script:
     update_script.write(f"""
+# TODO: make it check whether something is actually worth downloading, and only max. once per day.
+
 # Make sure the dirs exist
 mkdir -p {config['singularity_images']} other input
 
 echo "pulling images ..."
-singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade
+singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade # TODO: Switch to nexstrain/ image
 singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
 singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse
 singularity pull -F --dir {config['singularity_images']} docker://marcmtk/sarscov2_seq_report
@@ -93,7 +97,7 @@ singularity run {config['singularity_images']}/sarscov2_seq_report_latest.sif R 
 # TODO: give the dirs as arguments for the update script, instead of hardcoding it in the file.
 
 
-if(str(input("Update images? (y|n)")[:1]).lower()== "y"):
+if(str(input("Update images? (y|n): ")[:1]).lower()== "y"):
     try:
         update_command = f"bash scripts/update.sh"
         subprocess.run(update_command, shell = True, check = True)
