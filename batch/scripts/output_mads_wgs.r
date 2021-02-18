@@ -70,7 +70,7 @@ out = integrated %>%
            MDSU = 32092) %>% 
            
     # Format WGS strings using the inconclusive control for guidance.
-    mutate(WGS_smitsomhed = case_when(inconclusive ~ "WGS: Prøven er ikke sekvenserbar",
+    mutate(WGS_smitsomhed = case_when(inconclusive ~ "WGS: Prøven er ikke sekventerbar",
                                       lineage == "B.1.1.7" ~ "WGS: Variant med øget smitsomhed ", # Engelsk variant
                                       lineage == "B.1.351" | lineage == "P.1" ~ "WGS: Variant med øget smitsomhed og nedsat følsomhed for antistoffer",
                                       lineage == "B.1.525" ~ "WGS: Variant med nedsat følsomhed for antistoffer",
