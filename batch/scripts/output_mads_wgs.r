@@ -69,12 +69,12 @@ out = integrated %>%
     mutate(inconclusive = if_else(is.na(lineage) | is.na(clade) | plate_control_summary == "unsatisfactory", T, F), # If lineage or clade is NA, the sample should answer as inconclusive
            MDSU = 32092) %>% 
            
-    # Format WGS strings using the inconclusve control for guidance.
-    mutate(WGS_smitsomhed = case_when(inconclusive ~ "Prøven er ikke sekvenserbar",
-                                      lineage == "B.1.1.7" ~ "Variant med øget smitsomhed",
-                                      lineage == "B.1.351" ~ "Variant med øget smitsomhed",
-                                      lineage == "P.1" ~ "Variant med øget smitsomhed",
-                                      TRUE ~ "Variant med formodet normal smitsomhed"), # else
+    # Format WGS strings using the inconclusive control for guidance.
+    mutate(WGS_smitsomhed = case_when(inconclusive ~ "WGS: Prøven er ikke sekvenserbar",
+                                      lineage == "B.1.1.7" ~ "WGS: Variant med øget smitsomhed ", # Engelsk variant
+                                      lineage == "B.1.351" | lineage == "P.1" ~ "WGS: Variant med øget smitsomhed og nedsat følsomhed for antistoffer",
+                                      lineage == "B.1.525" ~ "WGS: Variant med nedsat følsomhed for antistoffer",
+                                      TRUE  ~ "Variant med formodet normal smitsomhed"), # else
            WGS_linje = case_when(inconclusive ~ "WGS: inkonklusiv",
                                  TRUE ~paste0("WGS: ", lineage, ", ", clade))) 
     
@@ -85,7 +85,9 @@ out %>%
     select(`sample-id` = ya_sample_name, MDSU, WGS_linje, WGS_smitsomhed) %>% 
     pivot_longer(c(WGS_linje, WGS_smitsomhed)) %>% 
     
-    write_delim(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), delim = ";")  # TODO: set output path for args
+    #write_delim(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), delim = ";")  # TODO: set output path for args
+    write.table(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), sep = ";", fileEncoding = "cp1252")  # TODO: set output path for args
+
 
 
 
