@@ -48,14 +48,24 @@ integrated = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>
     } else {
         write(paste("Info: all sample names are present in imported data table"), stderr())
     }
-}
+    }
+
+
+
+sseqlist14 = c("I346071", "I367762", "I386326", "I386447", "I386906", "I387313",
+               "I387711", "P000881", "P604057", "R183368", "R185218", "R185725", "R186025", "R186032",
+               "R186033", "R186037", "R186136", "R186141", "R187001", "R187160", "R187422", "R187424",
+               "R187623", "R188503", "R275537", "R275587", "R275763", "R275900", "R275907", "Seqpos", 
+               "V265768")
+
 
 # TODO: remove this block for production
 # Let's take a few samples only
 integrated = integrated %>% 
     arrange(desc(afsendt)) %>% 
     mutate(rn = row_number(afsendt)) %>% 
-    filter(rn <= 5 | ya_sample_name == "I346261" | ya_sample_name == "R138768" | ya_sample_name == "I376722" | ya_sample_name == "I387808") %>% 
+    #filter(rn <= 5 | ya_sample_name == "I346261" | ya_sample_name == "R138768" | ya_sample_name == "I376722" | ya_sample_name == "I387808") %>% 
+    filter(ya_sample_name %in% sseqlist14) %>% 
     select(-rn)
 
 
@@ -86,6 +96,7 @@ out %>%
     pivot_longer(c(WGS_linje, WGS_smitsomhed)) %>% 
     
     #write_delim(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), delim = ";")  # TODO: set output path for args
+    arrange(`sample-id`, name) %>% 
     write.table(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), sep = ";", fileEncoding = "cp1252", row.names = F)  # TODO: set output path for args
 
 
