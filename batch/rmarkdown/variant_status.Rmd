@@ -1,0 +1,115 @@
+---
+title: "SARS-CoV-2 variant status KMA AUH"
+author: "Marc Trunjer Kusk Nielsen & Carl M. Kobel"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r global-options, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "100%", dev = c("svg", "png"))
+```
+
+```{r setup, warning = FALSE, message = FALSE}
+library(stats)
+library(tidyverse)
+library(patchwork)
+library(here)
+
+is_mutant <- function(x) {
+  if(is.logical(x)) {
+    # if_else(x, "Mutant", "Wildtype", "Inconclusive") %>%
+    # factor(levels = c("Inconclusive", "Mutant", "Wildtype"))
+    fct_recode(as.character(x), "Mutant" = "TRUE", "Wildtype" = "FALSE") %>% 
+      fct_explicit_na("Inconclusive") %>% 
+      fct_expand("Wildtype", "Mutant", "Inconclusive")
+  } else {
+    x
+  }
+}
+
+`%not_in%` <- Negate(`%in%`)
+
+to_title <- function(name) {
+  if(str_detect(name, "[A-Z][0-9]{1,3}[A-Z]")) {
+    name
+  } else {
+    snakecase::to_title_case(name)
+  }
+}
+
+plot_stacked_area_by <- function(..., .data = ready) {
+  groups <- enquos(...)
+  
+  df <- .data %>% 
+  count(...) %>% 
+  complete(..., fill = list(n = 0)) %>% 
+  group_by(!!groups[[1]]) %>% 
+  mutate(prop = n / sum(n)) %>% 
+  ungroup 
+  
+  p1 <- df %>% 
+  ggplot(aes(!!groups[[1]], prop, fill = is_mutant(!!groups[[2]]))) +
+  geom_area(colour = "black", position = position_stack(reverse = TRUE)) +
+  scale_y_continuous("Proportion", labels = scales::percent_format()) +
+  labs(x = "", y = "Proportion", fill = to_title(as_label(groups[[2]]))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+  
+  p2 <- df %>% 
+  ggplot(aes(!!groups[[1]], n, fill = is_mutant(!!groups[[2]]))) +
+  geom_col(colour = "black", position = position_stack(reverse = TRUE)) +
+  labs(x = "", y = "Antal", fill = to_title(as_label(groups[[2]]))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+  
+if(pull(ready, !!groups[[2]]) %>% is.logical) {
+    p1 <- p1 + scale_fill_manual(values = c("Wildtype" = "#76b5c5", "Mutant" = "#873e23", "Inconclusive" = "#cccccc"))
+    p2 <- p2 + scale_fill_manual(values = c("Wildtype" = "#76b5c5", "Mutant" = "#873e23", "Inconclusive" = "#cccccc"))
+  }
+  
+  p1 + p2 + plot_layout(guides = 'collect') & theme(legend.position = "bottom")
+}
+
+ready <- readRDS(here("batch", "ready.RDS"))
+```
+
+# Definitioner
+
+Lineage: Genomisk eller distinkte grupper af SARS-CoV-2 virus. fx. B.1.1.7. Bestemmes af softwaren pangolin. Dokumentation: [PANGO lineages](https://cov-lineages.org/pango_lineages.html)
+
+Clade: Genomisk distinkte grupper af SARS-CoV-2 virus, der har udvidet sig til at være bredt fordelte i en region (fx Europa) eller globalt. Bestemmes af softwaren nextstrain eller nextclade. fx 20I/501Y.V1. Dokumentation: [Clade Naming & Definitions --- Nextstrain documentation](https://docs.nextstrain.org/en/latest/tutorials/SARS-CoV-2/steps/naming_clades.html)
+
+Variant (of concern): Løsere defineret end de to ovenstående, et begreb først anvendt af Public Health England. Primært defineret på baggrund om en mistanke om epidemiologisk betydende ændring, sekundært på baggrund af genetik. Dokumentation: [Gov.uk](https://www.gov.uk/government/publications/covid-19-variants-genomically-confirmed-case-numbers/variants-distribution-of-cases-data#Variant1)
+
+Variant (under investigation): Inden en Variant of concern bliver defineret vil der typisk være en periode hvor man indsamler information om den, i den periode benævnes det en Variant under investigation af Public Health England. Dokumentation: [Gov.uk](https://www.gov.uk/government/publications/covid-19-variants-genomically-confirmed-case-numbers/variants-distribution-of-cases-data#Variant1)
+
+Lineage of note: Et nyopstået begreb fra gruppen bag PANGO lineages. Indtager en plads cirka som Variants under investigation. Anvender Lineages. Benyttes indtil videre kun om A.23.1 og B.1.525
+
+# Oversættelsestabel
+
+| VUI           | VOC           | Lineage                      | Clade                            | Først beskrevet i                            | Deletion 69/70 | N501Y | E484K |
+|---------------|---------------|------------------------------|----------------------------------|----------------------------------------------|----------------|-------|-------|
+| VUI-202012/01 | VOC-202012/01 | B.1.1.7                      | 20I/501Y.V1                      | England                                      | +              | +     | -     |
+|               | VOC-202012/02 | B.1.351                      | 20H/501Y.V2                      | Sydafrika                                    | -              | +     | +     |
+|               | VOC-202101/02 | P.1                          | 20J/501Y.V3                      | Brasilien (rejsende til Japan fra Brasilien) | -              | +     | +     |
+|               | VOC202102/02  | B.1.1.7 med E484K mutationen | 20I/501Y.V1 med E484K mutationen | England                                      | +              | +     | +     |
+| VUI-202101/01 |               | P.2                          | 20B/S.484K                       | Brasilien                                    | -              | -     | +     |
+| VUI-202102/01 |               | A.23.1                       |                                  | England                                      | -              | -     | -     |
+| VUI-202102/03 |               | B.1.525                      |                                  | Ukendt                                       | +              | -     | +     |
+
+# Status
+
+Sekvenser som vi har sekvenseret lokalt opgøres her.
+
+```{r variants-of-concern-plots, warning = FALSE}
+plot_stacked_area_by(epi_date_week, variants_of_concern) & scale_fill_viridis_d(option = "magma")
+plot_stacked_area_by(.data = filter(ready, del69_70), epi_date_week, variants_of_concern) & scale_fill_viridis_d(option = "magma") & labs(title = "Kun sekvenser med deletion 69-70")
+```
+
+

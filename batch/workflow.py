@@ -309,3 +309,44 @@ target4 << f"""
 
 
     """
+
+mail_list_variant_status = open("mail_list_variant_status.txt", "r").read()
+#{mail_list_variant_status}
+target5 = gwf.target(f"b5_variant_status",
+    inputs = f"rmarkdown/flags/sent_{highest_batch_id}.flag",
+    outputs = f"rmarkdown/old_reports/{highest_batch_id}_variant_status.html",
+    memory = '2g')
+target5 << f"""
+
+    # Give some slack so a submission can be cancelled
+     sleep 60
+
+
+    # Make sure the old report is cleared if singularity fails without error.
+    rm -f rmarkdown/variant_status.html
+
+    # Generate report
+    singularity run --cleanenv docker://marcmtk/sarscov2_seq_report \
+        render.r rmarkdown/variant_status.Rmd
+        
+    mail -v -s "Automail: SARS-CoV-2 variant status" -a rmarkdown/variant_status.html {mail_list_variant_status} <<< "Autogenereret status over SARS-CoV-2 varianter i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
+
+Se vedhæftede html-fil.
+
+
+__
+
+Klinisk Mikrobioinformatisk Enhed
+carkob@rm.dk, marc.nielsen@rm.dk
+Klinisk Mikrobiologi ▪ Region Midtjylland
+Aarhus Universitetshospital
+Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
+
+"
+        
+    # Backup the reports
+    mkdir -p rmarkdown/old_reports
+    cp rmarkdown/variant_status.html {target5.outputs}
+
+
+    """
