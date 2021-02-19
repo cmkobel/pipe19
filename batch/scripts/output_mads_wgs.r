@@ -13,7 +13,7 @@ integrated = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>
     #select(final_sample_name, raw_full_name, batch, plate, moma_serial, raw_sample_name, ya_sample_name, type, extension, source_project, path, totalMissing, `cprnr.`, koen, Alder, navn, proevenr, afsendt, modtaget, proevekategori, anatomi, ct) %>% 
     
     select(ya_sample_name, batch, type, afsendt, lineage = lineage, clade, totalMissing_interpreted, plate_control_summary) %>% 
-    
+
     
     
     # Remove potential duplicates
@@ -55,7 +55,7 @@ integrated = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>
 integrated = integrated %>% 
     arrange(desc(afsendt)) %>% 
     mutate(rn = row_number(afsendt)) %>% 
-    filter(rn <= 5 | ya_sample_name == "I346261" | ya_sample_name == "R138768" | ya_sample_name == "I376722") %>% 
+    filter(rn <= 5 | ya_sample_name == "I346261" | ya_sample_name == "R138768" | ya_sample_name == "I376722" | ya_sample_name == "I387808") %>% 
     select(-rn)
 
 
@@ -86,7 +86,7 @@ out %>%
     pivot_longer(c(WGS_linje, WGS_smitsomhed)) %>% 
     
     #write_delim(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), delim = ";")  # TODO: set output path for args
-    write.table(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), sep = ";", fileEncoding = "cp1252")  # TODO: set output path for args
+    write.table(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), sep = ";", fileEncoding = "cp1252", row.names = F)  # TODO: set output path for args
 
 
 

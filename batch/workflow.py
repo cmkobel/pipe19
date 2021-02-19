@@ -243,6 +243,8 @@ target3 = gwf.target(f"b3_report",
 target3 << \
     f"""
 
+    # Give some slack so a submission can be cancelled
+    sleep 60
 
 
     # Make sure the old report is cleared if singularity fails without error.
@@ -257,7 +259,7 @@ target3 << \
 
 
     # {mail_list}
-    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html carkob@rm.dk <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
+    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html {mail_list} <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
 
 Se vedhæftede html-fil.
 
@@ -290,7 +292,8 @@ target4 = gwf.target(f"b4_voc_list",
     memory = '2g')
 target4 << f"""
 
-
+    # Give some slack so a submission can be cancelled
+    sleep 60
 
 
     # Make sure the old report is cleared if singularity fails without error.

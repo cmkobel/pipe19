@@ -80,10 +80,10 @@ with open("scripts/update.sh", "w") as update_script:
 mkdir -p {config['singularity_images']} other input
 
 echo "pulling images ..."
-singularity pull -F --dir {config['singularity_images']} docker://neherlab/nextclade # TODO: Switch to nexstrain/ image
-singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin
-singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse
-singularity pull -F --dir {config['singularity_images']} docker://marcmtk/sarscov2_seq_report
+singularity pull -F --dir {config['singularity_images']} docker://nextstrain/nextclade:latest # TODO: Switch to nexstrain/ image
+singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin:latest
+singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse:latest
+singularity pull -F --dir {config['singularity_images']} docker://marcmtk/sarscov2_seq_report:latest
 
 echo "updating version-list ..."
 singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> other/update_log.txt
