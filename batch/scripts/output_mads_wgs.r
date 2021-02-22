@@ -1,15 +1,40 @@
-
-
-
 library(tidyverse)
 
-rm(list = ls())
 
-arg_batch = "test" # should be set from args
+args = commandArgs(trailingOnly = TRUE)
+write("These are the args:", stderr())
+write(paste(args), stderr())
+write("", stderr())
+
+# Read cli-args
+#batch = args[1]
+integrated_file = args[1]
+arg_batch = args[2]
+file_out = args[3]
 
 
 
-integrated = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>% 
+devel = F
+# devel = T
+
+if (devel) {
+    rm(list = ls())
+    devel = T
+    
+    integrated_file = "~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv" # Should not be a batch specific file, as it is important to filter for the newest batch.
+    
+    arg_batch = "210218"
+  
+    file_out = paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv")
+      
+      
+}
+    
+
+
+
+
+integrated = read_tsv(integrated_file) %>% 
     #select(final_sample_name, raw_full_name, batch, plate, moma_serial, raw_sample_name, ya_sample_name, type, extension, source_project, path, totalMissing, `cprnr.`, koen, Alder, navn, proevenr, afsendt, modtaget, proevekategori, anatomi, ct) %>% 
     
     select(ya_sample_name, batch, type, afsendt, lineage = lineage, clade, totalMissing_interpreted, plate_control_summary) %>% 
@@ -20,8 +45,8 @@ integrated = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>
     group_by(ya_sample_name) %>% 
     arrange(desc(batch)) %>% # Put the newest batch first
     mutate(rank = row_number(ya_sample_name)) %>% 
-    filter(rank == 1) %>% # Pick the newest 
-    ungroup() %>%     
+    filter(rank == 1) %>% # Pick the newest. Conclusion: When you later filter for batch, you will have maked sure that each sample name can only be written into mads once.
+    ungroup() %>%   
     
     
     # After checking that there are no dupblicates, we can filter by sample
@@ -38,40 +63,38 @@ integrated = read_tsv("~/GenomeDK/clinmicrocore/pipe19/batch/integrated.tsv") %>
 
 
 # Throw a warning, if NAs are present in the imported table
-{
-    nalen = integrated %>% filter(is.na(ya_sample_name)) %>% 
-        pull(ya_sample_name) %>% 
-        length
-    
-    if (nalen == 1) {
-        write(paste("Warning: imported table contains", nalen, "missing sample names"), stderr())
-    } else {
-        write(paste("Info: all sample names are present in imported data table"), stderr())
-    }
-    }
+
+nalen = integrated %>% filter(is.na(ya_sample_name)) %>% 
+    pull(ya_sample_name) %>% 
+    length
+
+if (nalen == 1) {
+    write(paste("Warning: imported table contains", nalen, "missing sample names"), stderr())
+} else {
+    write(paste("Info: all sample names are present in imported data table"), stderr())
+}
+  
 
 
 
-sseqlist14 = c("I346071", "I367762", "I386326", "I386447", "I386906", "I387313",
-               "I387711", "P000881", "P604057", "R183368", "R185218", "R185725", "R186025", "R186032",
-               "R186033", "R186037", "R186136", "R186141", "R187001", "R187160", "R187422", "R187424",
-               "R187623", "R188503", "R275537", "R275587", "R275763", "R275900", "R275907", "Seqpos", 
-               "V265768")
+# sseqlist14 = c("I346071", "I367762", "I386326", "I386447", "I386906", "I387313",
+#                "I387711", "P000881", "P604057", "R183368", "R185218", "R185725", "R186025", "R186032",
+#                "R186033", "R186037", "R186136", "R186141", "R187001", "R187160", "R187422", "R187424",
+#                "R187623", "R188503", "R275537", "R275587", "R275763", "R275900", "R275907", "Seqpos", 
+#                "V265768")
+# 
+# sseqlist16 =  c("I386994", "I387783", "I387808", "P604333", "R188714", "R275127",
+#                 "R275133", "Seqpos")
 
 
-# TODO: remove this block for production
-# Let's take a few samples only
-integrated = integrated %>% 
-    arrange(desc(afsendt)) %>% 
-    mutate(rn = row_number(afsendt)) %>% 
-    #filter(rn <= 5 | ya_sample_name == "I346261" | ya_sample_name == "R138768" | ya_sample_name == "I376722" | ya_sample_name == "I387808") %>% 
-    filter(ya_sample_name %in% sseqlist14) %>% 
-    select(-rn)
 
 
 # Make the WGS-table
 out = integrated %>% 
     filter(!is.na(ya_sample_name)) %>% 
+  
+  
+    filter(batch == arg_batch) %>% 
     
 
     
@@ -96,8 +119,10 @@ out %>%
     pivot_longer(c(WGS_linje, WGS_smitsomhed)) %>% 
     
     #write_delim(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), delim = ";")  # TODO: set output path for args
-    arrange(`sample-id`, name) %>% 
-    write.table(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), sep = ";", fileEncoding = "cp1252", row.names = F)  # TODO: set output path for args
+    #arrange(`sample-id`, name) %>% # DO NOT SORT
+    
+    #write.table(paste0("~/GenomeDK/clinmicrocore/pipe19/batch/mads/output/32092_WGS_", arg_batch, ".csv"), quote = F, sep = ";", fileEncoding = "cp1252", row.names = F)  # TODO: set output path for args
+    write.table(file_out, quote = F, sep = ";", fileEncoding = "cp1252", row.names = F)  # TODO: set output path for args
 
 
 

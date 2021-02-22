@@ -16,6 +16,10 @@ input_glob = "../input/*.tab"
 output_base = "output"
 
 
+default_end = f"""echo; echo JOBID $SLURM_JOBID; jobinfo $SLURM_JOBID; echo OK"""
+
+
+
 with open('../config.yml') as file:
     config = yaml.full_load(file)
 
@@ -160,6 +164,27 @@ for index, input_list_row in input_list.iterrows():
 
     # Add the output files for the last per-batch target
     batch_done_list += target1.outputs
+
+
+
+    target_c = gwf.target(f"mads_{prefix}",
+        inputs = f"{output_base}/{prefix}/{prefix}_integrated.tsv",
+        outputs = f"{output_base}/{prefix}/{prefix}_WGS_32092.csv")
+    target_c << \
+        f"""
+
+        echo "singularity ..."
+        singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
+            Rscript scripts/output_mads_wgs.r integrated.tsv {prefix} {target_c.outputs}
+
+        echo "copying ..."
+        cp {target_c.outputs} mads/output/
+
+
+
+
+        {default_end}
+        """
 
 
 
