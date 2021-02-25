@@ -16,6 +16,9 @@ input_glob = "../input/*.tab"
 output_base = "output"
 
 
+
+
+
 default_end = f"""echo; echo JOBID $SLURM_JOBID; jobinfo $SLURM_JOBID; echo OK"""
 
 
@@ -69,32 +72,32 @@ for index, input_list_row in input_list.iterrows():
     #    continue
 
 
-    target0 = gwf.target(f"init_{prefix}",
+    target_init = gwf.target(f"init_{prefix}",
         inputs = input_file,
         outputs = [f"{output_base}/{prefix}/{prefix}_input.tab",
                    f"{output_base}/{prefix}/{prefix}_nextclade.tab",
                    f"{output_base}/{prefix}/{prefix}_pangolin.csv",
                    f"{output_base}/{prefix}/{prefix}_integrated_init.tsv"])
-    target0 << \
+    target_init << \
         f"""
 
         mkdir -p {output_base}/{prefix}
 
         echo "input ..."
-        cp ../input/{prefix}.tab {target0.outputs[0]}
+        cp ../input/{prefix}.tab {target_init.outputs[0]}
 
 
         echo "nextclade ..."
-        cat ../output/{prefix}.*/nextclade/*.tab > {target0.outputs[1]}
+        cat ../output/{prefix}.*/nextclade/*.tab > {target_init.outputs[1]}
 
 
         echo "pangolin ..."
-        cat ../output/{prefix}.*/pangolin/*.csv > {target0.outputs[2]}
+        cat ../output/{prefix}.*/pangolin/*.csv > {target_init.outputs[2]}
 
 
         # Integrate input-pangolin-nextclade files, before joining patient-data
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/integrate_batch_init.r {prefix} {target0.outputs[0]} {target0.outputs[1]} {target0.outputs[2]} {target0.outputs[3]}
+            Rscript scripts/integrate_batch_init.r {prefix} {target_init.outputs[0]} {target_init.outputs[1]} {target_init.outputs[2]} {target_init.outputs[3]}
             # Rscript args:                               1                    2                    3                    4                    5
 
 
@@ -108,30 +111,33 @@ for index, input_list_row in input_list.iterrows():
 
 
 
+        {default_end}
+
+
         """
 
-    target0B = gwf.target(f"rprt_{prefix}",
-        inputs = target0.outputs,
+    target_rprt = gwf.target(f"rprt_{prefix}",
+        inputs = target_init.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_qc_plates_A.pdf",
                    f"{output_base}/{prefix}/{prefix}_qc_plates_B.pdf"])
-    target0B << \
+    target_rprt << \
         f"""
 
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/batch_qc.r {target0B.inputs[3]} {prefix} {target0B.outputs[0]} {target0B.outputs[1]} 
+            Rscript scripts/batch_qc.r {target_rprt.inputs[3]} {prefix} {target_rprt.outputs[0]} {target_rprt.outputs[1]} 
             # Rscript args:                               1        2                     3                     4
 
 
         """
 
 
-    target1 = gwf.target(f"pati_{prefix}",
-        inputs = target0.outputs,
+    target_pati = gwf.target(f"pati_{prefix}",
+        inputs = target_init.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
-                   f"{output_base}/{prefix}/{prefix}_cp_consensus.sh",
-                   f"{output_base}/{prefix}/{prefix}_cp_raw.sh"]) #f"{output_base}/{prefix}/{prefix}_upload.tar.gz"]
-    target1 << \
+                   f"{output_base}/{prefix}/{prefix}_cp_consensus.sh"])
+                   #f"{output_base}/{prefix}/{prefix}_cp_raw.sh"]) #f"{output_base}/{prefix}/{prefix}_upload.tar.gz"]
+    target_pati << \
         f"""
 
 
@@ -146,7 +152,7 @@ for index, input_list_row in input_list.iterrows():
 
         # This file joins everything together, compresses and the files and produces a metadata file for upload
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/integrate_batch.r {prefix} {target1.inputs[3]} "mads/latest/*.csv" {target1.outputs[0]} {target1.outputs[1]}
+            Rscript scripts/integrate_batch.r {prefix} {target_pati.inputs[3]} "mads/latest/*.csv" {target_pati.outputs[0]} {target_pati.outputs[1]}
         # Rscript args:                             1                   2                   3                    4                    5
 
 
@@ -159,26 +165,28 @@ for index, input_list_row in input_list.iterrows():
 
 
 
+        {default_end}
 
         """
 
     # Add the output files for the last per-batch target
-    batch_done_list += target1.outputs
+    batch_done_list += target_pati.outputs
 
 
 
-    target_c = gwf.target(f"mads_{prefix}",
+    target_mads = gwf.target(f"mads_{prefix}",
         inputs = f"{output_base}/{prefix}/{prefix}_integrated.tsv",
-        outputs = f"{output_base}/{prefix}/{prefix}_WGS_32092.csv")
-    target_c << \
+        outputs = [f"{output_base}/{prefix}/{prefix}_WGS_32092.csv",
+                   f"mads/output/{prefix}_WGS_32092.csv"])
+    target_mads << \
         f"""
 
         echo "singularity ..."
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/output_mads_wgs.r integrated.tsv {prefix} {target_c.outputs}
+            Rscript scripts/output_mads_wgs.r integrated.tsv {prefix} {target_mads.outputs[0]}
 
         echo "copying ..."
-        cp {target_c.outputs} mads/output/
+        cp {target_mads.outputs[0]} {target_mads.outputs[1]}
 
 
 
@@ -189,51 +197,44 @@ for index, input_list_row in input_list.iterrows():
 
 
     # Copy, compress, and later: upload
-    target2 = gwf.target(f"gzip_{prefix}",
-        inputs = target1.outputs,
+    target_gzip = gwf.target(f"gzip_{prefix}",
+        inputs = target_pati.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_fasta_upload.tar.gz",
-                   f"{output_base}/{prefix}/{prefix}_raw_upload.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_compression_done.flag"],
         memory = '4g',
         walltime = '04:00:00')
-    target2 << \
+    target_gzip << \
         f"""
 
         #mkdir -p {output_base}/{prefix}/compress
         
 
         mkdir -p {output_base}/{prefix}/consensus_copy
-        mkdir -p {output_base}/{prefix}/raw_copy
+        #mkdir -p {output_base}/{prefix}/raw_copy
 
         # copy consensus
         echo "copying consensus ..."
-        bash {target2.inputs[2]}
+        bash {target_gzip.inputs[1]}
 
-        # copy raw fastqs
-        echo "copying raw ..."
-        bash {target2.inputs[3]}
 
 
         # compress
         echo "compressing fasta..."
         cd {output_base}/{prefix}/consensus_copy
-        tar -czvf ../../../{target2.outputs[0]} *
+        tar -czvf ../../../{target_gzip.outputs[0]} *
 
 
-
-        echo "compressing raw..."
-        cd ../raw_copy
-        tar -czvf ../../../{target2.outputs[1]} *
 
 
 
         echo "touching final flag ..."
-        touch ../../../{target2.outputs[2]}
+        touch ../../../{target_gzip.outputs[1]}
 
 
 
         # TODO: consider removing the raw and consensus copies
 
+        {default_end}
 
         """
 
@@ -309,6 +310,8 @@ Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
     cp rmarkdown/seq_report.html {target3.outputs[1]}
 
 
+    {default_end}
+
     """
 
 target4 = gwf.target(f"b4_voc_list",
@@ -332,6 +335,8 @@ target4 << f"""
     mkdir -p rmarkdown/old_reports
     cp rmarkdown/voc_list.html {target4.outputs}
 
+
+    {default_end}
 
     """
 
@@ -374,4 +379,8 @@ Palle Juul-Jensens Boulevard 99 ▪ DK-8200 Aarhus
     cp rmarkdown/variant_status.html {target5.outputs}
 
 
+
+    {default_end}
+
     """
+    

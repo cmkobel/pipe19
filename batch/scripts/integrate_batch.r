@@ -96,7 +96,7 @@ df_integrated_ranked %>%
   select(`#batch` = batch, final_sample_name, ya_sample_name, raw_sample_name, modtaget, rank) %>% 
   write_tsv(paste0("output/", batch, "/conflicts.tsv"), col_names = F)
   
-  
+# After outputting the date-conflicts, the newest samples can now be filtered for.
 df_integrated = df_integrated_ranked %>% 
   filter(rank == 1 | is.na(rank)) %>%  # Always picks the newest sample, when there are conflicts. The ones with NA-value are the ones where no match was found in the mads-extract, possibly because the mads-extract is too old.
   ungroup() %>% 
@@ -105,7 +105,8 @@ df_integrated = df_integrated_ranked %>%
 #df_integrated_ranked %>% select(modtaget, rank, ya_sample_name) %>% View
 
 
-# Save the full table
+# Save the full integrated table
+# This file will, later, be concatenated across all batches.
 write(paste("writing df_integrated to", file_integrated_out), stderr())
 df_integrated %>% write_tsv(file_integrated_out)
 
@@ -120,15 +121,17 @@ df_sample_sheet = df_integrated %>%
     filter(plate_control_summary != "unsatisfactory") %>%  
     rowwise() %>% 
     mutate(kma_id = "6620320",
-           raw_full_name = paste0(batch, ".", plate, ".", moma_serial, "_", raw_sample_name),
-           raw_filename = paste0(raw_full_name, "_R", c(1, 2), ".fastq.gz", collapse = " "),
-           consensus_filename = paste0(raw_full_name, ".fa", collapse = " "),
-           platform = "illumina qiaseq") %>% 
+           sample_id = raw_sample_name,
+           #raw_full_name = paste0(batch, ".", plate, ".", moma_serial, "_", raw_sample_name),
+           raw_filename = paste0(raw_full_name, "_R", c(1, 2), ".fastq.gz", collapse = ";"),
+           #consensus_filename = paste0(sample_id, ".fa", collapse = " "), # hvorfor er den her collapsed?
+            consensus_filename = paste0(sample_id, ".fasta"),
+           platform = "illumina") %>% 
     ungroup() %>% 
-    select(sample_id = raw_sample_name, raw_full_name, cpr = `cprnr.`, sampling_date = afsendt, kma_id, raw_filename, consensus_filename, platform, ct) # Consider including Ydernr/SKSnr
+    select(raw_full_name, sample_id, cpr = `cprnr.`, sampling_date = afsendt, kma_id, raw_filename, consensus_filename, platform, ct) # Consider including Ydernr/SKSnr
 
 df_sample_sheet %>%  
-    select(-raw_full_name) %>% 
+    #select(-raw_full_name) %>% 
     write_tsv(file_sample_sheet_out)
   
 
@@ -144,34 +147,35 @@ target_consensus = paste0("output/", batch, "/consensus_copy/")
 # Generate a table that has the commands. Then paste them to a system-command
 
 # Copy raw data
-write("commanding raws ...", stderr())
-command_raw = df_sample_sheet %>% 
-    select(raw_full_name, sample_id, raw_filename) %>% 
-    rowwise() %>% 
-    mutate(raw_filename_splitted = str_split(raw_filename, " "),
-           source_files = paste0("../output/", raw_full_name, "/trimmed_reads/", raw_filename_splitted, collapse = " "),
-           target_dir = target_raw) %>% 
-    ungroup() %>% 
-    
-    transmute(command = paste("cp", source_files, target_dir))
-
-command_raw %>% select(`#!/bin/bash` = command) %>% write_tsv(paste0("output/", batch, "/", batch, "_cp_raw.sh"))
-
-# if (!development_mode) {
-#   system(command_raw %>% pull(command) %>% paste(collapse = "; "))
-# }
+# I have disabled this block because SSI doesn't want raw data anyway.
+# write("commanding raws ...", stderr())
+# command_raw = df_sample_sheet %>% 
+#     select(sample_id, raw_filename) %>% 
+#     rowwise() %>% 
+#     mutate(raw_filename_splitted = str_split(raw_filename, ";"),#,
+#            source_files = paste0("../output/", sample_id, "/trimmed_reads/", raw_filename_splitted, collapse = " "),
+#            target_dir = target_raw) %>% 
+#     ungroup() %>% 
+#     
+#     transmute(command = paste("cp", source_files, target_dir))
+# 
+# command_raw %>% select(`#!/bin/bash` = command) %>% write_tsv(paste0("output/", batch, "/", batch, "_cp_raw.sh"))
+# 
 
 
 # Copy Consensus data
 write("commanding consensus' ...", stderr())
 command_consensus = df_sample_sheet %>% 
-    select(raw_full_name, sample_id, consensus_filename) %>% 
+    select(raw_full_name, consensus_filename) %>% 
     rowwise() %>% 
-    mutate(source_file = paste0("../output/", raw_full_name, "/consensus/", consensus_filename),
-         target_dir = target_consensus) %>% 
+    mutate(source_file = paste0("../output/", raw_full_name, "/consensus/", raw_full_name, ".fa"),
+         #target_dir = target_consensus,
+         #target_basename = paste0(consensus_filename),
+         target_file = paste0(target_consensus, consensus_filename)) %>% 
     ungroup() %>% 
   
-    transmute(command = paste("cp", source_file, target_dir))
+    #transmute(command = paste0("cp ", source_file, " ", target_dir, target_basename))
+    transmute(command = paste("cp", source_file, target_file))
 
 command_consensus %>% select(`#!/bin/bash` = command) %>% write_tsv(paste0("output/", batch, "/", batch, "_cp_consensus.sh")) # TODO: Make as a space-delimited file instead of tsv.
 

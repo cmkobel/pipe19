@@ -75,12 +75,20 @@ if (nalen == 1) {
 }
   
 
-
+sseqlist16 =  c("I386994", "I387783", "I387808", "P604333", "R188714", "R275127",
+                "R275133", "Seqpos")
 
 
 # Make the WGS-table
 out = integrated %>% 
     filter(!is.na(ya_sample_name)) %>% 
+  
+    filter(afsendt >= lubridate::ymd("2021-01-01")) %>% 
+  
+    #filter(! ya_sample_name %in% sseqlist16) %>% 
+
+  
+  
   
   
     filter(batch == arg_batch) %>% 
