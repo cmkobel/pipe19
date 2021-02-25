@@ -26,15 +26,15 @@ file_sample_sheet_out = args[5]
 
 if (development_mode) {
     
-    batch = "210120"
+    batch = "210223"
     
     # Inputs
-    file_integrated_init = "output/210120/210120_integrated_init.tsv"
+    file_integrated_init = "output/210223/210223_integrated_init.tsv"
     file_mads = "mads/latest/*.csv"
     
     # Outputs
-    file_integrated_out = "output/210120/210120_integrated.tsv"
-    file_sample_sheet_out = "output/210120/210120_sample_sheet.tsv"
+    file_integrated_out = "output/210223/210223_integrated.tsv"
+    file_sample_sheet_out = "output/210223/210223_sample_sheet.tsv"
 }
 
 write("These are the args:", stderr())
@@ -131,7 +131,7 @@ df_sample_sheet = df_integrated %>%
     select(raw_full_name, sample_id, cpr = `cprnr.`, sampling_date = afsendt, kma_id, raw_filename, consensus_filename, platform, ct) # Consider including Ydernr/SKSnr
 
 df_sample_sheet %>%  
-    #select(-raw_full_name) %>% 
+    select(-raw_full_name) %>% 
     write_tsv(file_sample_sheet_out)
   
 
@@ -176,6 +176,9 @@ command_consensus = df_sample_sheet %>%
   
     #transmute(command = paste0("cp ", source_file, " ", target_dir, target_basename))
     transmute(command = paste("cp", source_file, target_file))
+
+# Have a look at the consensus commands
+#command_consensus$command[1]
 
 command_consensus %>% select(`#!/bin/bash` = command) %>% write_tsv(paste0("output/", batch, "/", batch, "_cp_consensus.sh")) # TODO: Make as a space-delimited file instead of tsv.
 

@@ -200,6 +200,7 @@ for index, input_list_row in input_list.iterrows():
     target_gzip = gwf.target(f"gzip_{prefix}",
         inputs = target_pati.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_fasta_upload.tar.gz",
+                   f"{output_base}/{prefix}/{prefix}.6620320.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_compression_done.flag"],
         memory = '4g',
         walltime = '04:00:00')
@@ -214,7 +215,7 @@ for index, input_list_row in input_list.iterrows():
 
         # copy consensus
         echo "copying consensus ..."
-        bash {target_gzip.inputs[1]}
+        bash {target_gzip.inputs[2]}
 
 
 
