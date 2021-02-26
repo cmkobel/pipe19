@@ -134,7 +134,7 @@ for index, input_list_row in input_list.iterrows():
     target_pati = gwf.target(f"pati_{prefix}",
         inputs = target_init.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
-                   f"{output_base}/{prefix}/{prefix}_sample_sheet.tsv",
+                   f"{output_base}/{prefix}/{prefix}_samplesheet.tsv",
                    f"{output_base}/{prefix}/{prefix}_cp_consensus.sh"])
                    #f"{output_base}/{prefix}/{prefix}_cp_raw.sh"]) #f"{output_base}/{prefix}/{prefix}_upload.tar.gz"]
     target_pati << \
@@ -199,8 +199,7 @@ for index, input_list_row in input_list.iterrows():
     # Copy, compress, and later: upload
     target_gzip = gwf.target(f"gzip_{prefix}",
         inputs = target_pati.outputs,
-        outputs = [f"{output_base}/{prefix}/{prefix}_fasta_upload.tar.gz",
-                   f"{output_base}/{prefix}/{prefix}.6620320.tar.gz",
+        outputs = [f"{output_base}/{prefix}/{prefix}.6620320.tar.gz",
                    f"{output_base}/{prefix}/{prefix}_compression_done.flag"],
         memory = '4g',
         walltime = '04:00:00')
@@ -217,6 +216,9 @@ for index, input_list_row in input_list.iterrows():
         echo "copying consensus ..."
         bash {target_gzip.inputs[2]}
 
+
+        # Add the sample sheet
+        cp {target_gzip.inputs[1]} {output_base}/{prefix}/consensus_copy/samplesheet.tsv
 
 
         # compress
