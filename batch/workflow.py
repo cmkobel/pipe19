@@ -271,6 +271,9 @@ print("highest_batch_id", highest_batch_id)
 
 
 def read_mail_list(mail_list_file):
+    """ Reads a line separated file containing email addresses, 
+        and returns them as a space delimited string.
+    """
     mail_list = []
     with open(mail_list_file, "r") as mail_list_open:
         for line in mail_list_open:
