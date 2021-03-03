@@ -189,6 +189,10 @@ for index, input_list_row in input_list.iterrows():
         cp {target_mads.outputs[0]} {target_mads.outputs[1]}
 
 
+        # Send a mail
+        mail -v -s "Automail: mads WGS-svar" -a {target_mads.outputs[0]} carkob@rm.dk <<< "Autogenererede WGS mads-svar for sekventerings-batch-id: {prefix}.
+
+Bemærk at batch-id'et kun relaterer sig løst til prøvernes sekventeringsdato."
 
 
         {default_end}
@@ -263,7 +267,23 @@ bs = "\n"
 #highest_batch_id = sorted(batch_list)[-1]
 highest_batch_id = max(input_list["batch"])
 print("highest_batch_id", highest_batch_id)
-mail_list = open("mail_list.txt", "r").read()
+#mail_list = open("mail_list.txt", "r").read()
+
+
+def read_mail_list(mail_list_file):
+    mail_list = []
+    with open(mail_list_file, "r") as mail_list_open:
+        for line in mail_list_open:
+            if line[0] in ["\n", "#"]: # Skip blank lines and comments.
+                continue
+            mail_list.append(line.strip())
+
+    return " ".join(mail_list)
+
+
+mail_list_b3 = read_mail_list("mail_list.txt")
+
+print("this is the maillist for b3:", mail_list_b3)
 
 target3 = gwf.target(f"b3_report",
     inputs = batch_done_list,
@@ -288,8 +308,8 @@ target3 << \
     
 
 
-    # {mail_list}
-    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html {mail_list} <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
+    # {mail_list_b3}
+    mail -v -s "Automail: SARS-CoV-2 rapport" -a rmarkdown/seq_report.html {mail_list_b3} <<< "Autogenereret rapport over SARS-CoV-2 i Region Midtjylland (sundhedssporet) til og med sekventeringsbatch-id: {highest_batch_id}
 
 Se vedhæftede html-fil.
 
@@ -344,8 +364,9 @@ target4 << f"""
 
     """
 
-mail_list_variant_status = open("mail_list_variant_status.txt", "r").read()
-#{mail_list_variant_status}
+mail_list_variant_status = read_mail_list("mail_list_variant_status.txt") #open("mail_list_variant_status.txt", "r").read()
+#print("this is the variant status mail list:", mail_list_variant_status)
+
 target5 = gwf.target(f"b5_variant_status",
     inputs = f"rmarkdown/flags/sent_{highest_batch_id}.flag",
     outputs = f"rmarkdown/old_reports/{highest_batch_id}_variant_status.html",
