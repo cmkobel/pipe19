@@ -18,7 +18,7 @@ output_base = "output"
 
 
 
-
+default_start = f"""echo; echo JOBID $SLURM_JOBID"""
 default_end = f"""echo; echo JOBID $SLURM_JOBID; jobinfo $SLURM_JOBID; echo OK"""
 
 
@@ -80,6 +80,7 @@ for index, input_list_row in input_list.iterrows():
                    f"{output_base}/{prefix}/{prefix}_integrated_init.tsv"])
     target_init << \
         f"""
+        {default_start}
 
         mkdir -p {output_base}/{prefix}
 
@@ -122,12 +123,13 @@ for index, input_list_row in input_list.iterrows():
                    f"{output_base}/{prefix}/{prefix}_qc_plates_B.pdf"])
     target_rprt << \
         f"""
+        {default_start}
 
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/batch_qc.r {target_rprt.inputs[3]} {prefix} {target_rprt.outputs[0]} {target_rprt.outputs[1]} 
             # Rscript args:                               1        2                     3                     4
 
-
+        {default_end}
         """
 
 
@@ -140,7 +142,7 @@ for index, input_list_row in input_list.iterrows():
                    #f"{output_base}/{prefix}/{prefix}_cp_raw.sh"]) #f"{output_base}/{prefix}/{prefix}_upload.tar.gz"]
     target_pati << \
         f"""
-
+        {default_start}
 
 
         
@@ -191,6 +193,7 @@ for index, input_list_row in input_list.iterrows():
         memory = "2g")
     target_mads << \
         f"""
+        {default_start}
 
         echo "singularity ..."
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
@@ -220,6 +223,7 @@ Bemærk at batch-id'et kun relaterer sig løst til prøvernes sekventeringsdato.
         walltime = '04:00:00')
     target_gzip << \
         f"""
+        {default_start}
 
         #mkdir -p {output_base}/{prefix}/compress
         
@@ -306,6 +310,7 @@ target3 = gwf.target(f"b3_report",
     memory = '2g')
 target3 << \
     f"""
+    {default_start}
 
     # Give some slack so a submission can be cancelled
     sleep 60
@@ -357,6 +362,7 @@ target4 = gwf.target(f"b4_voc_list",
     outputs = f"rmarkdown/old_reports/{highest_batch_id}_voc_list.html",
     memory = '2g')
 target4 << f"""
+    {default_start}
 
     # Give some slack so a submission can be cancelled
     sleep 60
@@ -386,6 +392,7 @@ target5 = gwf.target(f"b5_variant_status",
     outputs = f"rmarkdown/old_reports/{highest_batch_id}_variant_status.html",
     memory = '2g')
 target5 << f"""
+    {default_start}
 
     # Give some slack so a submission can be cancelled
      sleep 60

@@ -52,7 +52,8 @@ df = pd.read_table(config['input_list_file'], sep="\t", names = ["batch", "path"
 batches_done = pd.read_table(config['batches_done_file'], sep = "\t", names = ["batch"])['batch'].tolist()
 
 
-# Prints a nice ending for each joblog.
+
+default_start = f"""echo; echo JOBID $SLURM_JOBID"""
 default_end = f"""echo; echo JOBID $SLURM_JOBID; jobinfo $SLURM_JOBID; echo OK"""
 
 
@@ -186,6 +187,8 @@ for index, row in df.iterrows():
             cores = 4)
         t_cat << \
             f"""
+            {default_start}
+
 
             {conda(config['conda_env'])}
             
@@ -226,6 +229,7 @@ for index, row in df.iterrows():
             walltime = '03:00:00')
         t_map << \
             f"""
+            {default_start}
 
             {conda(config['conda_env'])} # TODO: remove bwa from pipe19_a
 
@@ -274,6 +278,7 @@ for index, row in df.iterrows():
             memory = '16g',
             walltime = '03:00:00') << \
                 f"""
+                {default_start}
 
                 {conda(config['conda_env'])}
 
@@ -293,6 +298,7 @@ for index, row in df.iterrows():
                        f"{output_base}/{full_name}/pangolin/{full_name}_pangolin.csv"])
         t_pangolin << \
             f"""
+            {default_start}
 
             mkdir -p {t_pangolin.outputs[0]}
 
@@ -335,6 +341,7 @@ for index, row in df.iterrows():
             memory = '4g') 
         t_nextclade << \
             f"""
+            {default_start}
 
             mkdir -p {t_nextclade.outputs['dir']}
 

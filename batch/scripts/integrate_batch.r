@@ -116,7 +116,7 @@ missing = df_integrated %>%
 
 
 
-write(paste("missing cpr:", missing$final_sample_name))
+write(paste("missing cpr:", missing$raw_full_name), stdout())
 
 if (dim(missing)[1] > 0) {
     fail_msg = paste("Missing values in integrated prior to writing for the following raw sample names:\n", paste(missing$raw_full_name, collapse = ", "), "\n\nPlease update to the newest mads extract before continuing.")
