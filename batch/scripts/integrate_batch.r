@@ -1,11 +1,11 @@
-# First, call collect.sh to collect all the results together
+# First, collect all the results together.
 
 # Then import it
 
 
 library(tidyverse)
 development_mode = F
-# rm(list = ls()); setwd("~/GenomeDK/clinmicrocore/pipe19/batch"); development_mode = T
+# development_mode = T
 
 
 
@@ -25,6 +25,10 @@ file_sample_sheet_out = args[5]
 
 
 if (development_mode) {
+  
+    development_mode = T
+    
+    setwd("~/GenomeDK/clinmicrocore/pipe19/batch")
     
     batch = "210223"
     
@@ -101,6 +105,29 @@ df_integrated = df_integrated_ranked %>%
   filter(rank == 1 | is.na(rank)) %>%  # Always picks the newest sample, when there are conflicts. The ones with NA-value are the ones where no match was found in the mads-extract, possibly because the mads-extract is too old.
   ungroup() %>% 
   select(final_sample_name, everything(), -rank)
+
+
+
+
+# Check that no missing values exist.
+missing = df_integrated %>%
+  filter(type == "sample") %>% # Comment this to check the behaviour.
+  filter(is.na(`cprnr.`))
+
+
+
+write(paste("missing cpr:", missing$final_sample_name))
+
+if (dim(missing)[1] > 0) {
+    fail_msg = paste("Missing values in integrated prior to writing for the following raw sample names:\n", paste(missing$raw_full_name, collapse = ", "), "\n\nPlease update to the newest mads extract before continuing.")
+    #write(fail_msg, stderr())
+    
+    fail_on_purpose = T
+} else {
+    fail_on_purpose = F 
+}
+
+
 
 #df_integrated_ranked %>% select(modtaget, rank, ya_sample_name) %>% View
 
@@ -196,8 +223,10 @@ command_consensus %>% select(`#!/bin/bash` = command) %>% write_tsv(paste0("outp
 
 
 
-
-
+if (fail_on_purpose) {
+    stop(fail_msg)
+    
+}
 
        
 # upload the files via FTP

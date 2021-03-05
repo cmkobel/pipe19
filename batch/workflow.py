@@ -135,7 +135,8 @@ for index, input_list_row in input_list.iterrows():
         inputs = target_init.outputs,
         outputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
                    f"{output_base}/{prefix}/{prefix}_samplesheet.tsv",
-                   f"{output_base}/{prefix}/{prefix}_cp_consensus.sh"])
+                   f"{output_base}/{prefix}/{prefix}_cp_consensus.sh",
+                   f"{output_base}/{prefix}/{prefix}_pati_ok.flag"])
                    #f"{output_base}/{prefix}/{prefix}_cp_raw.sh"]) #f"{output_base}/{prefix}/{prefix}_upload.tar.gz"]
     target_pati << \
         f"""
@@ -152,8 +153,10 @@ for index, input_list_row in input_list.iterrows():
 
         # This file joins everything together, compresses and the files and produces a metadata file for upload
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
-            Rscript scripts/integrate_batch.r {prefix} {target_pati.inputs[3]} "mads/latest/*.csv" {target_pati.outputs[0]} {target_pati.outputs[1]}
+            Rscript scripts/integrate_batch.r {prefix} {target_pati.inputs[3]} "mads/latest/*.csv" {target_pati.outputs[0]} {target_pati.outputs[1]} && touch {target_pati.outputs[3]}
         # Rscript args:                             1                   2                   3                    4                    5
+
+
 
 
         # Cat all integrated together
@@ -163,6 +166,12 @@ for index, input_list_row in input_list.iterrows():
         singularity run --cleanenv ~/faststorage/singularity_images/tidyverse_latest.sif \
             Rscript scripts/fix_tsv.r integrated.tsv
 
+
+        # Fail on purpose
+        if [ ! -f "{target_pati.outputs[3]}" ]; then
+              echo "failing on purpose"
+              exit 200
+        fi
 
 
         {default_end}
@@ -175,9 +184,11 @@ for index, input_list_row in input_list.iterrows():
 
 
     target_mads = gwf.target(f"mads_{prefix}",
-        inputs = f"{output_base}/{prefix}/{prefix}_integrated.tsv",
+        inputs = [f"{output_base}/{prefix}/{prefix}_integrated.tsv",
+                  f"{output_base}/{prefix}/{prefix}_pati_ok.flag"],
         outputs = [f"{output_base}/{prefix}/{prefix}_WGS_32092.csv",
-                   f"mads/output/{prefix}_WGS_32092.csv"])
+                   f"mads/output/{prefix}_WGS_32092.csv"],
+        memory = "2g")
     target_mads << \
         f"""
 

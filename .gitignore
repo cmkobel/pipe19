@@ -1,0 +1,16 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.gwf
+.gwfconf.json
+__pycache__
+config
+controller_log
+input
+input_list.tab
+main_log.txt
+output
+trash
+documents
+batch/scripts/upload.sh

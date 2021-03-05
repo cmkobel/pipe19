@@ -132,7 +132,8 @@ input_grouped = input %>%
     mutate(path = path,
            batch = batch) %>% 
     select(batch, plate, moma_serial, raw_sample_name = sample_name, type, extension, source_project, path, R1, R2) %>% # Reorder the columns
-    arrange(moma_serial)
+    #arrange(moma_serial)
+    arrange(type)
     
 
 
