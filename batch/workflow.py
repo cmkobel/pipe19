@@ -304,7 +304,8 @@ mail_list_b3 = read_mail_list("mail_list.txt")
 print("this is the maillist for b3:", mail_list_b3)
 
 target3 = gwf.target(f"b3_report",
-    inputs = batch_done_list,
+    #inputs = batch_done_list, # Before fixing the missing sample names, a simpler requirement will be used on next line:
+    inputs = f"{output_base}/{highest_batch_id}/{highest_batch_id}_integrated.tsv",
     outputs = [f"rmarkdown/flags/sent_{highest_batch_id}.flag",
                f"rmarkdown/old_reports/{highest_batch_id}_seq_report.html",],
     memory = '2g')
