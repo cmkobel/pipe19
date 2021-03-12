@@ -373,10 +373,10 @@ target4 << f"""
     rm -f rmarkdown/voc_list.html
 
     # Generate report
-    #singularity run --cleanenv docker://marcmtk/sarscov2_seq_report \
     singularity run --cleanenv ~/faststorage/singularity_images/sarscov2_seq_report_latest.sif \
         render.r rmarkdown/voc_list.Rmd
         
+
     # Backup the reports
     mkdir -p rmarkdown/old_reports
     cp rmarkdown/voc_list.html {target4.outputs}
@@ -404,7 +404,6 @@ target5 << f"""
     rm -f rmarkdown/variant_status.html
 
     # Generate report
-    #singularity run --cleanenv docker://marcmtk/sarscov2_seq_report \
     singularity run --cleanenv ~/faststorage/singularity_images/sarscov2_seq_report_latest.sif \
         render.r rmarkdown/variant_status.Rmd
         
