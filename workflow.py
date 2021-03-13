@@ -291,12 +291,10 @@ for index, row in df.iterrows():
                 """
 
 
-
+        # TODO: På længere sigt burde dette job måske bygges ind i t_consensus. Det tager få minutter om at køre.
         t_variants = gwf.target(f"vari_{full_name_clean}",
             inputs = t_map.outputs['bam'],
-            outputs = f"{output_base}/{full_name}/aligned/{full_name}_variants.tsv",
-            memory = '8g',
-            walltime = '02:00:00')
+            outputs = f"{output_base}/{full_name}/aligned/{full_name}_variants.tsv")
         t_variants << \
                 f"""
                 {default_start}
@@ -310,7 +308,14 @@ for index, row in df.iterrows():
                 # samtools mpileup -A -d 0 --reference input[1] -Q 0 -F 0 input[0] | ivar variants -p output -t 0.03
 
                 # Kommando som jeg synes vil give mening at bruge i et variant-target
-                samtool mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {t_variants.outputs[0]} -m 10 -r {config['reference']} 
+                samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv -m 10 -r {config['reference']} -g {config['annotation']}
+
+
+                # add sample name
+                cat {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs}
+
+                rm {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv
+
 
 
                 {default_end}
