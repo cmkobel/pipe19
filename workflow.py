@@ -301,19 +301,13 @@ for index, row in df.iterrows():
 
                 {conda(config['conda_env'])}
 
-                # fra variants documentation:
-                # samtools mpileup -aa -A -d 600000 -B -Q 0 test.trimmed.bam | ivar variants -p test -q 20 -t 0.03 -r test_reference.fa -g test.gff
-
-                # fra ivar pipeline
-                # samtools mpileup -A -d 0 --reference input[1] -Q 0 -F 0 input[0] | ivar variants -p output -t 0.03
-
                 # Kommando som jeg synes vil give mening at bruge i et variant-target
                 samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv -m 10 -r {config['reference']} -g {config['annotation']}
-
 
                 # add sample name
                 cat {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs}
 
+                # remove temporary file
                 rm {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv
 
 
