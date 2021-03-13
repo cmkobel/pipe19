@@ -98,7 +98,7 @@ singularity run {config['singularity_images']}/sarscov2_seq_report_latest.sif R 
 # TODO: give the dirs as arguments for the update script, instead of hardcoding it in the file.
 
 
-if(str(input("Update images? (y|n): ")[:1]).lower()== "y"):
+if(str(input("Update images? press \"y\" or \"any\": ")[:1]).lower()== "y"):
     try:
         update_command = f"bash scripts/update.sh"
         subprocess.run(update_command, shell = True, check = True)
@@ -289,6 +289,34 @@ for index, row in df.iterrows():
 
                 {default_end}
                 """
+
+
+
+        t_variants = gwf.target(f"vari_{full_name_clean}",
+            inputs = t_map.outputs['bam'],
+            outputs = f"{output_base}/{full_name}/aligned/{full_name}_variants.tsv",
+            memory = '8g',
+            walltime = '02:00:00')
+        t_variants << \
+                f"""
+                {default_start}
+
+                {conda(config['conda_env'])}
+
+                # fra variants documentation:
+                # samtools mpileup -aa -A -d 600000 -B -Q 0 test.trimmed.bam | ivar variants -p test -q 20 -t 0.03 -r test_reference.fa -g test.gff
+
+                # fra ivar pipeline
+                # samtools mpileup -A -d 0 --reference input[1] -Q 0 -F 0 input[0] | ivar variants -p output -t 0.03
+
+                # Kommando som jeg synes vil give mening at bruge i et variant-target
+                samtool mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {t_variants.outputs[0]} -m 10 -r {config['reference']} 
+
+
+                {default_end}
+                """
+
+
 
 
         # Pangolin 
