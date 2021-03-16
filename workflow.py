@@ -290,30 +290,38 @@ for index, row in df.iterrows():
                 {default_end}
                 """
 
+        if True:
+            # TODO: På længere sigt burde dette job måske bygges ind i t_consensus. Det tager få minutter om at køre.
+            t_variants = gwf.target(f"vari_{full_name_clean}",
+                inputs = t_map.outputs['bam'],
+                outputs = [f"{output_base}/{full_name}/aligned/{full_name}_variants_q20.tsv",
+                           f"{output_base}/{full_name}/aligned/{full_name}_variants_q30.tsv"])
+            t_variants << \
+                    f"""
+                    {default_start}
 
-        # TODO: På længere sigt burde dette job måske bygges ind i t_consensus. Det tager få minutter om at køre.
-        t_variants = gwf.target(f"vari_{full_name_clean}",
-            inputs = t_map.outputs['bam'],
-            outputs = f"{output_base}/{full_name}/aligned/{full_name}_variants.tsv")
-        t_variants << \
-                f"""
-                {default_start}
+                    {conda(config['conda_env'])}
 
-                {conda(config['conda_env'])}
+                    
+                    samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.tsv -m 10 -r {config['reference']} -g {config['annotation']} -q 20
 
-                # Kommando som jeg synes vil give mening at bruge i et variant-target
-                samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv -m 10 -r {config['reference']} -g {config['annotation']}
-
-                # add sample name
-                cat {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs}
-
-                # remove temporary file
-                rm {output_base}/{full_name}/aligned/{full_name}_variants_tmp.tsv
+                    samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.tsv -m 10 -r {config['reference']} -g {config['annotation']} -q 30
 
 
+                    # add sample name
+                    cat {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.tsv | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs[0]}
+                    cat {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.tsv | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs[1]}
 
-                {default_end}
-                """
+
+                    # remove temporary file
+                    rm {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.tsv
+                    rm {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.tsv
+
+
+
+
+                    {default_end}
+                    """
 
 
 
