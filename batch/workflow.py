@@ -158,7 +158,10 @@ for index, input_list_row in input_list.iterrows():
             Rscript scripts/integrate_batch.r {prefix} {target_pati.inputs[3]} "mads/latest/*.csv" {target_pati.outputs[0]} {target_pati.outputs[1]} && touch {target_pati.outputs[3]}
         # Rscript args:                             1                   2                   3                    4                    5
 
-
+        
+        # Generate report
+        singularity run --cleanenv ~/faststorage/singularity_images/sarscov2_seq_report_latest.sif \
+            render.r rmarkdown/seq_report.Rmd
 
 
         # Cat all integrated together
