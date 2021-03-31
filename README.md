@@ -30,7 +30,7 @@ For each batch of samples, the following is done:
 
 ## Setup
 
-1. Clone the repo into the dir where you want its' base to be: `git clone git@github.com:cmkobel/pipe19.git`
+1. Clone the repo into the dir where you want its base to be: `git clone git@github.com:cmkobel/pipe19.git`
 
 2. Install dependencies listed in conda_env.yml:
 `conda env create -f conda_env.yml`
