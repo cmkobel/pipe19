@@ -1,6 +1,5 @@
 
-devel = F
-# rm(list = ls()); devel = T
+
 
 
 
@@ -26,14 +25,19 @@ format_specifier = args[5]
 # RScript path/to/parse_path.r 210108 20 ~/GenomeDK/ClinicalMicrobio/faststorage/BACKUP/N331/210108_NS500158_0512_AHGLJ7AFX2/fastq TRUE
 
 # For development, the arguments can also be given manually:
-if (devel) {
+if (F) {
+
+    rm(list = ls())
+    setwd("~/GenomeDK/clinmicrocore/pipe19/")    
     
-    batch = 210212
+    #batch = 210212
+    batch = 210421
     #plate = 3471
-    path = "~/GenomeDK/clinmicrocore/BACKUP/N350/210212_NS500158_0522_AHLHF3AFX2/fastq/"
-    year = 20
-    convertRIV = "TRUE" # You can't pass a type boolean over cli. Only text
-    format_specifier = "formatA"
+    #path = "~/GenomeDK/clinmicrocore/BACKUP/N350/210212_NS500158_0522_AHLHF3AFX2/fastq/"
+    path = "~/GenomeDK/clinmicrocore/BACKUP/N331/210421_NB501001_0534_AHV27LAFX2/fastq"
+    year = 21
+    convertRIV = "FALSE" # You can't pass a type boolean over cli. Only text
+    format_specifier = "formatB"
 }
 
 # Segregate whether the plate id can be found in the filen 
@@ -42,10 +46,16 @@ if (format_specifier == "formatA" | format_specifier == "formatC") {
     column_format = c("sample_name", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
     
     
-} else if (format_specifier == "formatB" | format_specifier == "formatD") { 
-   
-   column_format = c("sample_name", "plate", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
-   
+} else if (format_specifier == "formatC") { # | format_specifier == "formatD") { <-- af en eller anden grund har der også været en D engang.
+  
+    column_format = c("sample_name", "plate", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
+    
+    
+# Efter kontraktbruddet var jeg nødt til at skubbe den gamle B til C (ovenfor) og lave dette nye B-format som indeholder "moma_junk"
+} else if (format_specifier == "formatB") { 
+  
+    column_format = c("sample_name", "plate", "moma_junk", "source_project", "moma_serial", "illumina_serial", "lane", "direction", "extension")
+  
 } else {
   
   stop(paste("format specifier", column_format, "is not supported."))
