@@ -85,12 +85,16 @@ singularity pull -F --dir {config['singularity_images']} docker://nextstrain/nex
 singularity pull -F --dir {config['singularity_images']} docker://staphb/pangolin:latest
 singularity pull -F --dir {config['singularity_images']} docker://rocker/tidyverse:latest
 singularity pull -F --dir {config['singularity_images']} docker://marcmtk/sarscov2_seq_report:latest
+singularity pull -F --dir {config['singularity_images']} docker://comics/samtools:latest
+
 
 echo "updating version-list ..."
 singularity run {config['singularity_images']}/nextclade_latest.sif nextclade.js --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "nextclade\t" idate "\t" $0 }}' >> other/update_log.txt
 singularity run {config['singularity_images']}/pangolin_latest.sif pangolin --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "pangolin\t" idate "\t" $0 }}' >> other/update_log.txt
 singularity run {config['singularity_images']}/tidyverse_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> other/update_log.txt
 singularity run {config['singularity_images']}/sarscov2_seq_report_latest.sif R --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "R\t" idate "\t" $0 }}' >> other/update_log.txt
+singularity run {config['singularity_images']}/samtools_latest.sif samtools --version | head -n 1 | awk -v idate=$(date --iso-8601='minutes') '{{ print "samtools\t" idate "\t" $0 }}' >> other/update_log.txt
+
 
 """)
 
@@ -291,31 +295,51 @@ for index, row in df.iterrows():
                 """
 
         if True:
-            # TODO: På længere sigt burde dette job måske bygges ind i t_consensus. Det tager få minutter om at køre.
             t_variants = gwf.target(f"vari_{full_name_clean}",
                 inputs = t_map.outputs['bam'],
-                outputs = [f"{output_base}/{full_name}/aligned/{full_name}_variants_q20.tsv",
-                           f"{output_base}/{full_name}/aligned/{full_name}_variants_q30.tsv"])
+                outputs = [#f"{output_base}/{full_name}/aligned/{full_name}_variants_q20.tsv",
+                           #f"{output_base}/{full_name}/aligned/{full_name}_variants_q30.tsv",
+                           f"{output_base}/{full_name}/aligned/{full_name}_bcftools.vcf",
+                           ])
             t_variants << \
                     f"""
                     {default_start}
 
                     {conda(config['conda_env'])}
 
-                    
-                    samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.tsv -m 10 -r {config['reference']} -g {config['annotation']} -q 20
 
-                    samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.tsv -m 10 -r {config['reference']} -g {config['annotation']} -q 30
+                    # Jeg har haft nogle problemer med positionerne i med ivar variants
+                    # Derfor vil jeg prøve at bruge et andet program.
+                    #samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.vcf -m 10 -r {config['reference']} -g {config['annotation']} -q 20
+                    #samtools mpileup -aa -A -B -Q 0 {t_map.outputs['bam']} | ivar variants -p {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.vcf -m 10 -r {config['reference']} -g {config['annotation']} -q 30
+
+                    # Og her prøver jeg så at bruge bcftools i stedet.
+                    # Det er lidt klodset, at jeg ikke kan finde ud af at pipe inde i den samme containerinstans.
+                    singularity run --cleanenv {config['singularity_images']}/samtools_latest.sif \
+                        /bin/bash -c "bcftools mpileup \
+                            --max-depth 500 \
+                            -Ou \
+                            -f {config['reference']} {t_map.outputs['bam']} \
+                    | bcftools call \
+                        --ploidy 1 \
+                        -mv \
+                        -Ov \
+                        -o {output_base}/{full_name}/aligned/{full_name}_bcftools_tmp.vcf"
+
+
+
 
 
                     # add sample name
-                    cat {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.tsv | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs[0]}
-                    cat {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.tsv | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs[1]}
+                    cat {output_base}/{full_name}/aligned/{full_name}_bcftools_tmp.vcf | awk -v sam={full_name} '{{ print $0 "\\t" sam }}' > {t_variants.outputs[0]}
+
 
 
                     # remove temporary file
-                    rm {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.tsv
-                    rm {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.tsv
+                    #rm {output_base}/{full_name}/aligned/{full_name}_variants_q20_tmp.vcf
+                    #rm {output_base}/{full_name}/aligned/{full_name}_variants_q30_tmp.vcf
+                    rm {output_base}/{full_name}/aligned/{full_name}_bcftools_tmp.vcf
+
 
 
 

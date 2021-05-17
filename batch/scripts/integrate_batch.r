@@ -62,9 +62,11 @@ df_integrated_init = read_tsv(file_integrated_init)
 
 file_mads_latest = Sys.glob(file_mads) %>% sort %>% tail(1)
 write(paste("importing latest df_mads", file_mads_latest, "..."), stderr())
-df_mads = read_csv(file_mads_latest, locale = locale(encoding = "WINDOWS-1252")) %>% 
+#df_mads = read_csv(file_mads_latest, locale = locale(encoding = "WINDOWS-1252")) %>% 
+df_mads = read_csv(file_mads_latest) %>% 
+  
 
-    rename(koen = `K<U+00D8>N`, # Hej Marc. Ved ved ikke hvorfor der er problemer med indkodningen af kolonne-navne. Derfor laver jeg manuelle oversættelser her.
+    rename(koen = `K<U+00D8>N`, 
            proevenr = `pr<U+00F8>venr`,
            proevekategori = `pr<U+00F8>vekategori`) %>% 
     mutate_at(vars(afsendt, modtaget), lubridate::dmy) %>%
